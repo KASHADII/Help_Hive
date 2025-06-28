@@ -22,7 +22,7 @@ export const Register = () => {
       alert('Passwords do not match!')
       return
     }
-    // Handle registration logic here
+    
     console.log('Registration attempt:', formData)
   }
 

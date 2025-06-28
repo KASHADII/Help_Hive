@@ -21,11 +21,11 @@ export const TaskList = () => {
 
   const locations = [
     'all',
-    'Downtown',
-    'North Side',
-    'South Side',
-    'East Side',
-    'West Side',
+    
+    'North India',
+    'South India',
+    'East India',
+    'West India',
     'Remote'
   ]
 
