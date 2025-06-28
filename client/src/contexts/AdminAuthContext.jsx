@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { authAPI, tokenManager } from '../lib/api'
 
 const AdminAuthContext = createContext()
 
@@ -10,50 +11,63 @@ export const useAdminAuth = () => {
   return context
 }
 
-// Hardcoded admin credentials
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin123'
-}
-
 export const AdminAuthProvider = ({ children }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [adminUser, setAdminUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // Check if admin is already logged in
-    const adminToken = localStorage.getItem('adminToken')
-    if (adminToken) {
-      setIsAdminAuthenticated(true)
+    const checkAdminAuth = async () => {
+      try {
+        if (tokenManager.isAuthenticated()) {
+          const response = await authAPI.getCurrentUser()
+          if (response.data.role === 'admin') {
+            setAdminUser(response.data)
+            setIsAdminAuthenticated(true)
+          } else {
+            // Not an admin user, clear token
+            tokenManager.removeToken()
+          }
+        }
+      } catch (error) {
+        console.error('Admin auth check failed:', error)
+        tokenManager.removeToken()
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    checkAdminAuth()
   }, [])
 
   const adminLogin = async (username, password) => {
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        const token = 'admin-token-' + Date.now()
-        localStorage.setItem('adminToken', token)
-        setIsAdminAuthenticated(true)
-        return { success: true }
-      } else {
-        throw new Error('Invalid credentials')
-      }
+      const response = await authAPI.adminLogin(username, password)
+      tokenManager.setToken(response.token)
+      setAdminUser(response.user)
+      setIsAdminAuthenticated(true)
+      return { success: true, user: response.user }
     } catch (error) {
       throw error
     }
   }
 
-  const adminLogout = () => {
-    localStorage.removeItem('adminToken')
-    setIsAdminAuthenticated(false)
+  const adminLogout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Admin logout error:', error)
+    } finally {
+      tokenManager.removeToken()
+      setAdminUser(null)
+      setIsAdminAuthenticated(false)
+    }
   }
 
   const value = {
     isAdminAuthenticated,
+    adminUser,
     adminLogin,
     adminLogout
   }

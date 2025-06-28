@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Mail, Lock, Eye, EyeOff, Building } from 'lucide-react'
-import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { authAPI } from '../lib/api'
 
 export const NgoLogin = () => {
   const [formData, setFormData] = useState({
@@ -25,35 +24,36 @@ export const NgoLogin = () => {
     try {
       setError('')
       setLoading(true)
-      await signInWithEmailAndPassword(auth, formData.email, formData.password)
+      
+      const response = await authAPI.login(formData.email, formData.password)
+      
+      // Check if the user is an NGO
+      if (response.user.role !== 'ngo') {
+        setError('This account is not registered as an NGO. Please use the volunteer login.')
+        return
+      }
+      
+      // Store token and user data
+      localStorage.setItem('token', response.token)
+      localStorage.setItem('user', JSON.stringify(response.user))
+      
       navigate('/ngo-dashboard')
     } catch (error) {
       console.error('NGO Login error:', error)
-      setError(getErrorMessage(error.code))
+      
+      // Handle different types of errors
+      if (error.message) {
+        setError(error.message)
+      } else {
+        setError('Failed to log in. Please check your credentials and try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const getErrorMessage = (errorCode) => {
-    switch (errorCode) {
-      case 'auth/user-not-found':
-        return 'No NGO account found with this email address.'
-      case 'auth/wrong-password':
-        return 'Incorrect password.'
-      case 'auth/invalid-email':
-        return 'Invalid email address.'
-      case 'auth/user-disabled':
-        return 'This account has been disabled.'
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later.'
-      default:
-        return 'Failed to log in. Please check your credentials and try again.'
-    }
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900">
@@ -66,7 +66,10 @@ export const NgoLogin = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Organization Access</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Organization Access
+            </CardTitle>
             <CardDescription>
               Enter your credentials to access your NGO dashboard
             </CardDescription>

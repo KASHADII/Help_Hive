@@ -1,12 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { authAPI, tokenManager } from '../lib/api'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
 const AuthContext = createContext()
@@ -23,21 +16,44 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Sign up function - only for users (students/volunteers), not NGOs
-  const signup = async (email, password, firstName, lastName) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      
-      // Update user profile with display name
-      await updateProfile(userCredential.user, {
-        displayName: `${firstName} ${lastName}`,
-        photoURL: null
-      })
+  // Check if user is authenticated on app load
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        if (tokenManager.isAuthenticated()) {
+          const response = await authAPI.getCurrentUser()
+          setCurrentUser(response.data)
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        tokenManager.removeToken()
+      } finally {
+        setLoading(false)
+      }
+    }
 
-      // You can also store additional user data in Firestore here if needed
-      // For now, we'll just use the basic Firebase auth user object
-      
-      return userCredential.user
+    checkAuth()
+  }, [])
+
+  // Sign up function for volunteers
+  const signup = async (userData) => {
+    try {
+      const response = await authAPI.register(userData)
+      tokenManager.setToken(response.token)
+      setCurrentUser(response.user)
+      return response.user
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // Sign up function for NGOs
+  const ngoSignup = async (ngoData) => {
+    try {
+      const response = await authAPI.ngoRegister(ngoData)
+      tokenManager.setToken(response.token)
+      setCurrentUser(response.user)
+      return { user: response.user, ngo: response.ngo }
     } catch (error) {
       throw error
     }
@@ -46,33 +62,70 @@ export const AuthProvider = ({ children }) => {
   // Sign in function
   const login = async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      return userCredential.user
+      const response = await authAPI.login(email, password)
+      tokenManager.setToken(response.token)
+      setCurrentUser(response.user)
+      return response.user
     } catch (error) {
       throw error
     }
   }
 
   // Sign out function
-  const logout = () => {
-    return signOut(auth)
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      tokenManager.removeToken()
+      setCurrentUser(null)
+    }
   }
 
-  // Listen for auth state changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user)
-      setLoading(false)
-    })
+  // Update user profile
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await authAPI.getCurrentUser()
+      setCurrentUser(response.data)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  }
 
-    return unsubscribe
-  }, [])
+  // Forgot password
+  const forgotPassword = async (email) => {
+    try {
+      const response = await authAPI.forgotPassword(email)
+      return response
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // Reset password
+  const resetPassword = async (resetToken, password) => {
+    try {
+      const response = await authAPI.resetPassword(resetToken, password)
+      tokenManager.setToken(response.token)
+      setCurrentUser(response.user)
+      return response.user
+    } catch (error) {
+      throw error
+    }
+  }
 
   const value = {
     currentUser,
     signup,
+    ngoSignup,
     login,
-    logout
+    logout,
+    updateProfile,
+    forgotPassword,
+    resetPassword,
+    isAuthenticated: tokenManager.isAuthenticated()
   }
 
   if (loading) {

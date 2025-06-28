@@ -18,6 +18,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { tasksAPI, ngoAPI } from '../lib/api'
 
 export const NgoDashboard = () => {
   const [ngoDetails, setNgoDetails] = useState(null)
@@ -29,56 +30,36 @@ export const NgoDashboard = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!currentUser) {
-      navigate('/ngo-login')
-      return
-    }
+    const loadDashboardData = async () => {
+      if (!currentUser) {
+        navigate('/ngo-login')
+        return
+      }
 
-    // Load NGO details from localStorage
-    const details = localStorage.getItem('ngoDetails')
-    if (details) {
-      setNgoDetails(JSON.parse(details))
-    }
-
-    // Simulate loading tasks
-    setTimeout(() => {
-      setTasks([
-        {
-          id: 1,
-          title: 'Volunteer for Community Cleanup',
-          description: 'Help clean up the local park and surrounding areas',
-          location: 'Central Park, Downtown',
-          date: '2024-01-15',
-          time: '09:00 AM',
-          volunteers: 5,
-          maxVolunteers: 10,
-          status: 'active'
-        },
-        {
-          id: 2,
-          title: 'Food Distribution Drive',
-          description: 'Distribute food packages to underprivileged families',
-          location: 'Community Center',
-          date: '2024-01-20',
-          time: '02:00 PM',
-          volunteers: 3,
-          maxVolunteers: 8,
-          status: 'active'
-        },
-        {
-          id: 3,
-          title: 'Educational Workshop',
-          description: 'Conduct educational workshops for children',
-          location: 'Local School',
-          date: '2024-01-25',
-          time: '10:00 AM',
-          volunteers: 2,
-          maxVolunteers: 5,
-          status: 'completed'
+      try {
+        setLoading(true)
+        
+        // Load NGO details from backend
+        const ngoResponse = await ngoAPI.getMyNGO()
+        setNgoDetails(ngoResponse.ngo)
+        
+        // Load tasks from backend
+        const tasksResponse = await tasksAPI.getMyTasks()
+        setTasks(tasksResponse.tasks || [])
+        
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+        // If NGO details not found, redirect to registration
+        if (error.message.includes('NGO not found')) {
+          navigate('/ngo-register')
+          return
         }
-      ])
-      setLoading(false)
-    }, 1000)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
   }, [currentUser, navigate])
 
   const getStatusBadge = (status) => {
@@ -116,7 +97,7 @@ export const NgoDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -126,10 +107,13 @@ export const NgoDashboard = () => {
                 NGO Dashboard
               </h1>
               <p className="mt-2 text-gray-600">
-                Welcome back, {currentUser?.displayName}
+                Welcome back, {currentUser?.name || currentUser?.displayName}
               </p>
             </div>
-            <Button onClick={() => navigate('/post-task')}>
+            <Button 
+              onClick={() => navigate('/post-task')}
+              disabled={!ngoDetails || ngoDetails.status !== 'approved'}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Post New Task
             </Button>
@@ -209,151 +193,146 @@ export const NgoDashboard = () => {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{tasks.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  +2 from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {tasks.filter(task => task.status === 'active').length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Currently running
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Volunteers</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {tasks.reduce((sum, task) => sum + task.volunteers, 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Across all tasks
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'tasks' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">My Tasks</h2>
-              <Button 
-                onClick={() => navigate('/post-task')}
-                disabled={ngoDetails?.status !== 'approved'}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Task
-              </Button>
-            </div>
-
-            {ngoDetails?.status !== 'approved' && (
-              <Card className="bg-yellow-50 border-yellow-200">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2 text-yellow-800">
-                    <AlertCircle className="h-5 w-5" />
-                    <p className="font-medium">Account Pending Approval</p>
-                  </div>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    You can view tasks but cannot create new ones until your organization is approved by our admin team.
-                  </p>
+        <div className="space-y-6">
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Total Tasks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+                  <p className="text-sm text-gray-600">Tasks posted</p>
                 </CardContent>
               </Card>
-            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tasks.map((task) => (
-                <Card key={task.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{task.title}</CardTitle>
-                      {getStatusBadge(task.status)}
-                    </div>
-                    <CardDescription className="line-clamp-2">
-                      {task.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {task.location}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      {task.date}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-2" />
-                      {task.time}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Users className="h-4 w-4 mr-2" />
-                      {task.volunteers}/{task.maxVolunteers} volunteers
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Active Volunteers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {tasks.reduce((total, task) => total + (task.volunteers || 0), 0)}
+                  </p>
+                  <p className="text-sm text-gray-600">Volunteers engaged</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Completed Tasks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {tasks.filter(task => task.status === 'completed').length}
+                  </p>
+                  <p className="text-sm text-gray-600">Tasks completed</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'tasks' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">My Tasks</h2>
+                <Button 
+                  onClick={() => navigate('/post-task')}
+                  disabled={!ngoDetails || ngoDetails.status !== 'approved'}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Post New Task
+                </Button>
+              </div>
+
+              {tasks.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks yet</h3>
+                      <p className="text-gray-600 mb-4">
+                        {!ngoDetails || ngoDetails.status !== 'approved' 
+                          ? 'You need to be approved to post tasks.'
+                          : 'Start by posting your first task to connect with volunteers.'
+                        }
+                      </p>
+                      {ngoDetails && ngoDetails.status === 'approved' && (
+                        <Button onClick={() => navigate('/post-task')}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Post Your First Task
                         </Button>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tasks.map((task) => (
+                    <Card key={task._id || task.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{task.title}</CardTitle>
+                          {getStatusBadge(task.status)}
+                        </div>
+                        <CardDescription>{task.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {task.location}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Clock className="h-4 w-4 mr-2" />
+                          {new Date(task.date).toLocaleDateString()} at {task.time}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Users className="h-4 w-4 mr-2" />
+                          {task.volunteers || 0} / {task.maxVolunteers || '∞'} volunteers
+                        </div>
+                        <div className="flex space-x-2 pt-2">
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'volunteers' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Volunteer Management</h2>
+          {activeTab === 'volunteers' && (
             <Card>
-              <CardHeader>
-                <CardTitle>Recent Volunteers</CardTitle>
-                <CardDescription>
-                  Volunteers who have signed up for your tasks
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No volunteers have signed up yet.</p>
-                  <p className="text-sm">Volunteers will appear here once they join your tasks.</p>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Volunteer Management</h3>
+                  <p className="text-gray-600">
+                    Manage volunteers for your tasks. This feature is coming soon.
+                  </p>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

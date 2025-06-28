@@ -22,35 +22,24 @@ export const Login = () => {
     try {
       setError('')
       setLoading(true)
-      await login(formData.email, formData.password)
-      navigate('/dashboard')
+      const user = await login(formData.email, formData.password)
+      
+      // Redirect based on user role
+      if (user.role === 'ngo') {
+        navigate('/ngo-dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (error) {
       console.error('Login error:', error)
-      setError(getErrorMessage(error.code))
+      setError(error.message || 'Failed to log in. Please check your credentials and try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const getErrorMessage = (errorCode) => {
-    switch (errorCode) {
-      case 'auth/user-not-found':
-        return 'No account found with this email address.'
-      case 'auth/wrong-password':
-        return 'Incorrect password.'
-      case 'auth/invalid-email':
-        return 'Invalid email address.'
-      case 'auth/user-disabled':
-        return 'This account has been disabled.'
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later.'
-      default:
-        return 'Failed to log in. Please check your credentials and try again.'
-    }
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900">
@@ -62,7 +51,7 @@ export const Login = () => {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-xl shadow-sm border p-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-600">{error}</p>
@@ -129,9 +118,9 @@ export const Login = () => {
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-red-600 hover:text-red-500">
+                  <Link to="/forgot-password" className="font-medium text-red-600 hover:text-red-500">
                     Forgot your password?
-                  </a>
+                  </Link>
                 </div>
               </div>
 
@@ -146,6 +135,12 @@ export const Login = () => {
               Don't have an account?{' '}
               <Link to="/register" className="font-medium text-red-600 hover:text-red-500">
                 Sign up
+              </Link>
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              Are you an NGO?{' '}
+              <Link to="/ngo-login" className="font-medium text-red-600 hover:text-red-500">
+                NGO Login
               </Link>
             </p>
           </div>

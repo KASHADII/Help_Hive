@@ -27,7 +27,7 @@ const App = () => {
         <Router>
           <div className="min-h-screen bg-background">
             <Navbar />
-            <main className="container mx-auto px-4 py-8">
+            <main className="pt-16">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/tasks" element={<TaskList />} />
