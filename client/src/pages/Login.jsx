@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 export const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,11 +10,43 @@ export const Login = () => {
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     
-    console.log('Login attempt:', formData)
+    try {
+      setError('')
+      setLoading(true)
+      await login(formData.email, formData.password)
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Login error:', error)
+      setError(getErrorMessage(error.code))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getErrorMessage = (errorCode) => {
+    switch (errorCode) {
+      case 'auth/user-not-found':
+        return 'No account found with this email address.'
+      case 'auth/wrong-password':
+        return 'Incorrect password.'
+      case 'auth/invalid-email':
+        return 'Invalid email address.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled.'
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please try again later.'
+      default:
+        return 'Failed to log in. Please check your credentials and try again.'
+    }
   }
 
   return (
@@ -30,6 +63,12 @@ export const Login = () => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="bg-white rounded-xl shadow-sm border p-8">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -44,6 +83,7 @@ export const Login = () => {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Enter your email"
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -61,11 +101,13 @@ export const Login = () => {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Enter your password"
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={loading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -79,6 +121,7 @@ export const Login = () => {
                     name="remember-me"
                     type="checkbox"
                     className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                    disabled={loading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                     Remember me
@@ -92,8 +135,8 @@ export const Login = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                Sign in
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>
           </div>

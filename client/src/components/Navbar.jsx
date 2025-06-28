@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Menu, X, Heart, User, Plus, Home, Search } from 'lucide-react'
+import { Menu, X, Heart, User, Plus, Home, Search, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
-  const [isLoggedIn, setIsLoggedIn] = useState(false) // This would come from auth context
+  const navigate = useNavigate()
+  const { currentUser, logout } = useAuth()
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -16,6 +18,15 @@ export const Navbar = () => {
   ]
 
   const isActive = (path) => location.pathname === path
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -50,8 +61,13 @@ export const Navbar = () => {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {isLoggedIn ? (
+            {currentUser ? (
               <>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {currentUser.displayName || currentUser.email}
+                  </span>
+                </div>
                 <Link to="/profile">
                   <Button variant="outline" size="sm">
                     <User className="h-4 w-4 mr-2" />
@@ -61,8 +77,9 @@ export const Navbar = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setIsLoggedIn(false)}
+                  onClick={handleLogout}
                 >
+                  <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
               </>
@@ -117,8 +134,11 @@ export const Navbar = () => {
                 )
               })}
               <div className="pt-4 border-t">
-                {isLoggedIn ? (
+                {currentUser ? (
                   <div className="flex flex-col space-y-2">
+                    <div className="px-3 py-2 text-sm text-gray-600">
+                      Welcome, {currentUser.displayName || currentUser.email}
+                    </div>
                     <Link to="/profile">
                       <Button variant="outline" size="sm" className="w-full">
                         <User className="h-4 w-4 mr-2" />
@@ -130,10 +150,11 @@ export const Navbar = () => {
                       size="sm"
                       className="w-full"
                       onClick={() => {
-                        setIsLoggedIn(false)
+                        handleLogout()
                         setIsMenuOpen(false)
                       }}
                     >
+                      <LogOut className="h-4 w-4 mr-2" />
                       Logout
                     </Button>
                   </div>
