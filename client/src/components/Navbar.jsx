@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from './ui/button'
-import { Menu, X, Heart, User, Plus, Home, Search, LogOut } from 'lucide-react'
+import { Menu, X, Heart, User, Plus, Home, Search, LogOut, Building } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showAuthOptions, setShowAuthOptions] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { currentUser, logout } = useAuth()
@@ -27,6 +28,8 @@ export const Navbar = () => {
       console.error('Logout error:', error)
     }
   }
+
+  const isNgoUser = currentUser && currentUser.displayName && !currentUser.displayName.includes(' ')
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -67,11 +70,14 @@ export const Navbar = () => {
                   <span className="text-sm text-gray-600">
                     Welcome, {currentUser.displayName || currentUser.email}
                   </span>
+                  {isNgoUser && (
+                    <Building className="h-4 w-4 text-blue-500" />
+                  )}
                 </div>
-                <Link to="/profile">
+                <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
                   <Button variant="outline" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
+                    {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
+                    {isNgoUser ? 'NGO Dashboard' : 'Profile'}
                   </Button>
                 </Link>
                 <Button 
@@ -84,18 +90,53 @@ export const Navbar = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="outline" size="sm">
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button size="sm">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAuthOptions(!showAuthOptions)}
+                >
+                  Sign In
+                </Button>
+                
+                {showAuthOptions && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-50">
+                    <div className="py-1">
+                      <Link
+                        to="/login"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowAuthOptions(false)}
+                      >
+                        <User className="h-4 w-4 inline mr-2" />
+                        Volunteer Login
+                      </Link>
+                      <Link
+                        to="/ngo-login"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowAuthOptions(false)}
+                      >
+                        <Building className="h-4 w-4 inline mr-2" />
+                        NGO Login
+                      </Link>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="ml-2 flex space-x-2">
+                  <Link to="/register">
+                    <Button size="sm">
+                      <User className="h-4 w-4 mr-2" />
+                      Volunteer
+                    </Button>
+                  </Link>
+                  <Link to="/ngo-register">
+                    <Button size="sm" variant="outline">
+                      <Building className="h-4 w-4 mr-2" />
+                      NGO
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
 
@@ -138,11 +179,12 @@ export const Navbar = () => {
                   <div className="flex flex-col space-y-2">
                     <div className="px-3 py-2 text-sm text-gray-600">
                       Welcome, {currentUser.displayName || currentUser.email}
+                      {isNgoUser && <Building className="h-4 w-4 inline ml-2 text-blue-500" />}
                     </div>
-                    <Link to="/profile">
+                    <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
                       <Button variant="outline" size="sm" className="w-full">
-                        <User className="h-4 w-4 mr-2" />
-                        Profile
+                        {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
+                        {isNgoUser ? 'NGO Dashboard' : 'Profile'}
                       </Button>
                     </Link>
                     <Button 
@@ -160,14 +202,34 @@ export const Navbar = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col space-y-2">
+                    <div className="px-3 py-2 text-sm text-gray-600 font-medium">
+                      Sign in as:
+                    </div>
                     <Link to="/login">
                       <Button variant="outline" size="sm" className="w-full">
-                        Login
+                        <User className="h-4 w-4 mr-2" />
+                        Volunteer
                       </Button>
                     </Link>
+                    <Link to="/ngo-login">
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Building className="h-4 w-4 mr-2" />
+                        NGO
+                      </Button>
+                    </Link>
+                    <div className="px-3 py-2 text-sm text-gray-600 font-medium mt-2">
+                      Or register as:
+                    </div>
                     <Link to="/register">
                       <Button size="sm" className="w-full">
-                        Sign Up
+                        <User className="h-4 w-4 mr-2" />
+                        Volunteer
+                      </Button>
+                    </Link>
+                    <Link to="/ngo-register">
+                      <Button size="sm" variant="outline" className="w-full">
+                        <Building className="h-4 w-4 mr-2" />
+                        NGO
                       </Button>
                     </Link>
                   </div>

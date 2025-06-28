@@ -1,7 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
-import { Heart, Users, Award, Clock, MapPin, Star } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Heart, Users, Award, Clock, MapPin, Star, Building, User } from 'lucide-react'
 
 export const Home = () => {
   const features = [
@@ -85,6 +86,69 @@ export const Home = () => {
               </Button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* User Type Selection */}
+      <section>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Join HelpHive Today
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Choose how you want to make a difference in your community
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Link to="/register">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <User className="h-16 w-16 text-blue-500" />
+                </div>
+                <CardTitle className="text-2xl">Volunteer</CardTitle>
+                <CardDescription>
+                  Students and individuals looking to make a difference
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <ul className="text-sm text-gray-600 space-y-2 mb-6">
+                  <li>• Browse and join volunteer opportunities</li>
+                  <li>• Build your skills and experience</li>
+                  <li>• Connect with NGOs and other volunteers</li>
+                  <li>• Track your impact and contributions</li>
+                </ul>
+                <Button className="w-full">
+                  Register as Volunteer
+                </Button>
+              </CardContent>
+            </Link>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Link to="/ngo-register">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Building className="h-16 w-16 text-green-500" />
+                </div>
+                <CardTitle className="text-2xl">NGO/Organization</CardTitle>
+                <CardDescription>
+                  Non-profits and organizations seeking volunteers
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <ul className="text-sm text-gray-600 space-y-2 mb-6">
+                  <li>• Post volunteer opportunities</li>
+                  <li>• Manage volunteer applications</li>
+                  <li>• Connect with passionate volunteers</li>
+                  <li>• Track task completion and impact</li>
+                </ul>
+                <Button className="w-full">
+                  Register as NGO
+                </Button>
+              </CardContent>
+            </Link>
+          </Card>
         </div>
       </section>
 
@@ -179,12 +243,14 @@ export const Home = () => {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link to="/register">
             <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
-              Get Started
+              <User className="h-5 w-5 mr-2" />
+              Join as Volunteer
             </Button>
           </Link>
-          <Link to="/tasks">
-            <Button size="lg" variant="outline" className="text-lg px-8 py-3 border-white text-white hover:bg-white hover:text-red-600">
-              Explore Tasks
+          <Link to="/ngo-register">
+            <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
+              <Building className="h-5 w-5 mr-2" />
+              Register as NGO
             </Button>
           </Link>
         </div>
