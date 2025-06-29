@@ -32,37 +32,50 @@ export const Register = () => {
       setError('Password must be at least 6 characters long.')
       return
     }
+
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      setError('First name and last name are required.')
+      return
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email is required.')
+      return
+    }
     
     try {
       setError('')
       setLoading(true)
-      await signup(formData.email, formData.password, formData.firstName, formData.lastName)
+      
+      const userData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password
+      }
+      
+      await signup(userData)
       navigate('/dashboard')
     } catch (error) {
       console.error('Registration error:', error)
-      setError(getErrorMessage(error.code))
+      
+      // Handle different types of errors
+      if (error.message) {
+        setError(error.message)
+      } else if (error.errors && Array.isArray(error.errors)) {
+        // Handle validation errors from backend
+        const errorMessages = error.errors.map(err => err.msg).join(', ')
+        setError(errorMessages)
+      } else {
+        setError('Failed to create account. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const getErrorMessage = (errorCode) => {
-    switch (errorCode) {
-      case 'auth/email-already-in-use':
-        return 'An account with this email already exists.'
-      case 'auth/invalid-email':
-        return 'Invalid email address.'
-      case 'auth/weak-password':
-        return 'Password is too weak. Please choose a stronger password.'
-      case 'auth/operation-not-allowed':
-        return 'Email/password accounts are not enabled. Please contact support.'
-      default:
-        return 'Failed to create account. Please try again.'
-    }
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900">
@@ -74,7 +87,7 @@ export const Register = () => {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-xl shadow-sm border p-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-600">{error}</p>
@@ -227,6 +240,12 @@ export const Register = () => {
               Already have an account?{' '}
               <Link to="/login" className="font-medium text-red-600 hover:text-red-500">
                 Sign in
+              </Link>
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              Are you an NGO?{' '}
+              <Link to="/ngo-register" className="font-medium text-red-600 hover:text-red-500">
+                Register as NGO
               </Link>
             </p>
           </div>
