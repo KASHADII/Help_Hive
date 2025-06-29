@@ -72,8 +72,6 @@ export const AdminAuthProvider = ({ children }) => {
     adminLogout
   }
 
-  console.log('AdminAuthContext value:', value)
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

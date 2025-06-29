@@ -1,23 +1,31 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Loader2, AlertCircle } from 'lucide-react'
+import { tasksAPI } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export const PostTask = () => {
+  const navigate = useNavigate()
+  const { currentUser, isAuthenticated } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
     category: '',
     description: '',
-    longDescription: '',
     location: '',
-    duration: '',
-    deadline: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    startDate: '',
+    endDate: '',
+    volunteersNeeded: 1,
     skills: [],
     requirements: [],
     benefits: [],
     contactName: '',
     contactEmail: '',
     contactPhone: '',
-    organization: '',
     scheduleDate: '',
     scheduleTime: '',
     scheduleLocation: ''
@@ -26,15 +34,105 @@ export const PostTask = () => {
   const [newSkill, setNewSkill] = useState('')
   const [newRequirement, setNewRequirement] = useState('')
   const [newBenefit, setNewBenefit] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Check if user is authenticated and is an NGO
+  useEffect(() => {
+    console.log('PostTask useEffect - isAuthenticated:', isAuthenticated)
+    console.log('PostTask useEffect - currentUser:', currentUser)
+    
+    if (!isAuthenticated) {
+      setError('You must be logged in to post a task.')
+      return
+    }
+    
+    if (currentUser && currentUser.role !== 'ngo') {
+      setError('Only NGOs can post tasks. Please log in with an NGO account.')
+      return
+    }
+    
+    // Check if token is valid by making a test API call
+    const checkTokenValidity = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          setError('No authentication token found. Please log in again.')
+          return
+        }
+        
+        // Test the token by making a simple API call
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          setError('Authentication token is invalid. Please log in again.')
+          localStorage.removeItem('token')
+        }
+      } catch (error) {
+        console.error('Token validation error:', error)
+        setError('Authentication check failed. Please log in again.')
+      }
+    }
+    
+    if (isAuthenticated && currentUser) {
+      checkTokenValidity()
+    }
+  }, [isAuthenticated, currentUser])
+
+  // Show authorization error if user is not authorized
+  if (!isAuthenticated || (currentUser && currentUser.role !== 'ngo')) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="text-center py-12">
+          <div className="text-red-400 mb-4">
+            <AlertCircle className="h-16 w-16 mx-auto" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Authorization Required
+          </h3>
+          <p className="text-gray-600 mb-4">
+            {!isAuthenticated 
+              ? 'You must be logged in to post a task.' 
+              : 'Only NGOs can post tasks. Please log in with an NGO account.'
+            }
+          </p>
+          <div className="flex gap-4 justify-center">
+            {!isAuthenticated ? (
+              <>
+                <Button onClick={() => navigate('/login')} variant="outline">
+                  Login
+                </Button>
+                <Button onClick={() => navigate('/ngo-login')} variant="outline">
+                  NGO Login
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => navigate('/ngo-login')} variant="outline">
+                NGO Login
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const categories = [
-    'Community Service',
+    'Healthcare',
     'Education',
     'Environment',
-    'Healthcare',
-    'Technology',
-    'Arts & Culture',
+    'Community Service',
     'Animal Welfare',
+    'Disaster Relief',
+    'Human Rights',
+    'Arts & Culture',
+    'Sports',
+    'Technology',
     'Other'
   ]
 
@@ -107,11 +205,76 @@ export const PostTask = () => {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Here you would typically send the data to your backend
-    console.log('Task data:', formData)
-    alert('Task posted successfully!')
+    
+    // Check authorization
+    if (!isAuthenticated) {
+      setError('You must be logged in to post a task.')
+      return
+    }
+    
+    if (currentUser && currentUser.role !== 'ngo') {
+      setError('Only NGOs can post tasks. Please log in with an NGO account.')
+      return
+    }
+    
+    // Debug: Check token
+    const token = localStorage.getItem('token')
+    console.log('Current user:', currentUser)
+    console.log('Is authenticated:', isAuthenticated)
+    console.log('Token exists:', !!token)
+    console.log('Token:', token ? token.substring(0, 20) + '...' : 'No token')
+    
+    setLoading(true)
+    setError('')
+    
+    try {
+      // Transform form data to match backend structure
+      const taskData = {
+        title: formData.title,
+        category: formData.category,
+        description: formData.description,
+        location: {
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode
+        },
+        dateTime: {
+          startDate: new Date(formData.startDate).toISOString(),
+          endDate: new Date(formData.endDate).toISOString()
+        },
+        requirements: {
+          volunteersNeeded: parseInt(formData.volunteersNeeded),
+          skills: formData.skills,
+          experience: 'beginner',
+          trainingProvided: false
+        },
+        benefits: formData.benefits.join('. '),
+        status: 'active'
+      }
+      
+      console.log('Sending task data:', taskData)
+      
+      const response = await tasksAPI.create(taskData)
+      alert('Task posted successfully!')
+      navigate('/tasks')
+    } catch (error) {
+      console.error('Error posting task:', error)
+      
+      // Show more detailed error information
+      if (error.errors && Array.isArray(error.errors)) {
+        const errorMessages = error.errors.map(err => `${err.path}: ${err.msg}`).join(', ')
+        setError(`Validation errors: ${errorMessages}`)
+      } else if (error.message) {
+        setError(error.message)
+      } else {
+        setError('Failed to post task. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -124,6 +287,32 @@ export const PostTask = () => {
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Share your organization's needs and connect with passionate volunteers who want to make a difference.
         </p>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {/* Debug Info - Remove in production */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-semibold text-blue-900 mb-2">Debug Info:</h3>
+        <p className="text-blue-700 text-sm">Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
+        <p className="text-blue-700 text-sm">User Role: {currentUser?.role || 'None'}</p>
+        <p className="text-blue-700 text-sm">Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}</p>
+        <p className="text-blue-700 text-sm">User ID: {currentUser?._id || 'None'}</p>
+        <div className="mt-2">
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline" 
+            size="sm"
+            className="text-xs"
+          >
+            Refresh Page
+          </Button>
+        </div>
       </div>
 
       {/* Form */}
@@ -172,77 +361,122 @@ export const PostTask = () => {
             {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location *
-              </label>
-              <select
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Select location</option>
-                {locations.map(location => (
-                  <option key={location} value={location}>{location}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration *
+                City *
               </label>
               <input
                 type="text"
-                name="duration"
-                value={formData.duration}
+                name="city"
+                value={formData.city}
                 onChange={handleInputChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 2-3 hours"
+                placeholder="e.g., Mumbai"
               />
             </div>
 
-            {/* Deadline */}
+            {/* Address */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Application Deadline *
+                Address *
               </label>
               <input
-                type="date"
-                name="deadline"
-                value={formData.deadline}
+                type="text"
+                name="address"
+                value={formData.address}
                 onChange={handleInputChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="e.g., 123 Main Street"
+              />
+            </div>
+
+            {/* State */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                State *
+              </label>
+              <input
+                type="text"
+                name="state"
+                value={formData.state}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="e.g., Maharashtra"
+              />
+            </div>
+
+            {/* ZIP Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ZIP Code *
+              </label>
+              <input
+                type="text"
+                name="zipCode"
+                value={formData.zipCode}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="e.g., 400001"
+              />
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date *
+              </label>
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* End Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date *
+              </label>
+              <input
+                type="date"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Volunteers Needed */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Volunteers Needed *
+              </label>
+              <input
+                type="number"
+                name="volunteersNeeded"
+                value={formData.volunteersNeeded}
+                onChange={handleInputChange}
+                min="1"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="e.g., 5"
               />
             </div>
 
             {/* Short Description */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Short Description *
+                Description *
               </label>
               <textarea
                 name="description"
                 value={formData.description}
-                onChange={handleInputChange}
-                required
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Brief description of the task (will appear in task listings)"
-              />
-            </div>
-
-            {/* Long Description */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Detailed Description *
-              </label>
-              <textarea
-                name="longDescription"
-                value={formData.longDescription}
                 onChange={handleInputChange}
                 required
                 rows={6}
@@ -493,8 +727,8 @@ export const PostTask = () => {
 
         {/* Submit Button */}
         <div className="flex justify-center">
-          <Button type="submit" size="lg" className="px-8 py-3 text-lg">
-            Post Task
+          <Button type="submit" size="lg" className="px-8 py-3 text-lg" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : 'Post Task'}
           </Button>
         </div>
       </form>

@@ -20,130 +20,101 @@ import {
   Globe
 } from 'lucide-react'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
+import { adminAPI } from '../lib/api'
 
 export const AdminDashboard = () => {
-  const [applications, setApplications] = useState([])
+  const [ngos, setNGOs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedApplication, setSelectedApplication] = useState(null)
+  const [selectedNGO, setSelectedNGO] = useState(null)
   const [activeTab, setActiveTab] = useState('pending')
+  const [stats, setStats] = useState({})
+  const [error, setError] = useState('')
 
   const { adminLogout } = useAdminAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Load NGO applications from localStorage
-    const loadApplications = () => {
-      const storedApplications = localStorage.getItem('ngoApplications')
-      if (storedApplications) {
-        const parsed = JSON.parse(storedApplications)
-        console.log('Loaded applications from localStorage:', parsed)
-        setApplications(parsed)
-      } else {
-        // Sample data for demonstration
-        const sampleApplications = [
-          {
-            id: 1,
-            ngoName: 'Community Care Center',
-            email: 'admin@communitycare.org',
-            contactPerson: 'John Smith',
-            contactEmail: 'john@communitycare.org',
-            phone: '+1-555-0123',
-            address: '123 Main St, Downtown',
-            website: 'https://communitycare.org',
-            category: 'Healthcare',
-            description: 'Providing healthcare services to underprivileged communities',
-            foundedYear: '2015',
-            registrationNumber: 'NGO-2023-001',
-            status: 'pending',
-            submittedAt: '2024-01-10T10:30:00Z',
-            documents: {
-              registrationCertificate: 'registration_cert.pdf',
-              taxExemption: 'tax_exemption.pdf',
-              annualReport: 'annual_report_2023.pdf'
-            }
-          },
-          {
-            id: 2,
-            ngoName: 'Green Earth Initiative',
-            email: 'info@greenearth.org',
-            contactPerson: 'Sarah Johnson',
-            contactEmail: 'sarah@greenearth.org',
-            phone: '+1-555-0456',
-            address: '456 Oak Ave, Green District',
-            website: 'https://greenearth.org',
-            category: 'Environment',
-            description: 'Environmental conservation and sustainability projects',
-            foundedYear: '2018',
-            registrationNumber: 'NGO-2023-002',
-            status: 'approved',
-            submittedAt: '2024-01-08T14:20:00Z',
-            documents: {
-              registrationCertificate: 'green_registration.pdf',
-              taxExemption: 'green_tax_exemption.pdf'
-            }
-          },
-          {
-            id: 3,
-            ngoName: 'Youth Education Foundation',
-            email: 'contact@youthedu.org',
-            contactPerson: 'Michael Brown',
-            contactEmail: 'michael@youthedu.org',
-            phone: '+1-555-0789',
-            address: '789 Pine St, Education District',
-            website: 'https://youthedu.org',
-            category: 'Education',
-            description: 'Educational programs for underprivileged youth',
-            foundedYear: '2020',
-            registrationNumber: 'NGO-2023-003',
-            status: 'rejected',
-            submittedAt: '2024-01-05T09:15:00Z',
-            documents: {
-              registrationCertificate: 'youth_registration.pdf'
-            }
-          }
-        ]
-        console.log('Setting sample applications:', sampleApplications)
-        setApplications(sampleApplications)
-        localStorage.setItem('ngoApplications', JSON.stringify(sampleApplications))
-      }
-      setLoading(false)
-    }
-
-    loadApplications()
+    loadData()
   }, [])
 
-  const handleStatusUpdate = (applicationId, newStatus) => {
-    const updatedApplications = applications.map(app => 
-      app.id === applicationId ? { ...app, status: newStatus } : app
-    )
-    setApplications(updatedApplications)
-    localStorage.setItem('ngoApplications', JSON.stringify(updatedApplications))
-    setSelectedApplication(null)
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      // Load dashboard stats
+      const dashboardData = await adminAPI.getDashboard()
+      setStats(dashboardData.data)
+      
+      // Load NGOs
+      const ngosData = await adminAPI.getNGOs()
+      setNGOs(ngosData.data)
+    } catch (error) {
+      console.error('Error loading admin data:', error)
+      setError('Failed to load data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const setSelectedApplicationWithLog = (application) => {
-    console.log('Setting selectedApplication:', application)
-    setSelectedApplication(application)
+  const handleApproveNGO = async (ngoId, adminNotes = '') => {
+    try {
+      await adminAPI.approveNGO(ngoId, adminNotes)
+      await loadData() // Reload data
+      setSelectedNGO(null)
+    } catch (error) {
+      console.error('Error approving NGO:', error)
+      setError('Failed to approve NGO. Please try again.')
+    }
+  }
+
+  const handleRejectNGO = async (ngoId, rejectionReason, adminNotes = '') => {
+    try {
+      await adminAPI.rejectNGO(ngoId, rejectionReason, adminNotes)
+      await loadData() // Reload data
+      setSelectedNGO(null)
+    } catch (error) {
+      console.error('Error rejecting NGO:', error)
+      setError('Failed to reject NGO. Please try again.')
+    }
   }
 
   const getStatusBadge = (status) => {
-    if (!status) {
-      return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
-    }
-    
     switch (status) {
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending Review</Badge>
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>
       case 'approved':
-        return <Badge className="bg-green-100 text-green-800">Approved</Badge>
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Approved</Badge>
       case 'rejected':
-        return <Badge className="bg-red-100 text-red-800">Rejected</Badge>
+        return <Badge variant="secondary" className="bg-red-100 text-red-800">Rejected</Badge>
       default:
-        return <Badge className="bg-gray-100 text-gray-800">{String(status)}</Badge>
+        return <Badge variant="secondary">{status}</Badge>
     }
   }
 
-  const filteredApplications = applications.filter(app => app.status === activeTab)
+  // Helper function to safely render any field that might be an object
+  const safeRender = (value, fallback = '') => {
+    if (!value) return fallback
+    if (typeof value === 'object') {
+      // Handle address object
+      if (value.street || value.city || value.state || value.zipCode) {
+        return `${value.street || ''}, ${value.city || ''}, ${value.state || ''} ${value.zipCode || ''}`.trim()
+      }
+      // Handle contactPerson object
+      if (value.name || value.email || value.phone) {
+        return value.name || value.email || value.phone || fallback
+      }
+      // For other objects, try to stringify or return fallback
+      try {
+        return JSON.stringify(value)
+      } catch {
+        return fallback
+      }
+    }
+    return String(value)
+  }
+
+  const filteredNGOs = ngos.filter(ngo => ngo.status === activeTab)
 
   const handleLogout = () => {
     adminLogout()
@@ -180,6 +151,13 @@ export const AdminDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -188,7 +166,7 @@ export const AdminDashboard = () => {
               <Building className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{applications.length}</div>
+              <div className="text-2xl font-bold">{ngos.length}</div>
             </CardContent>
           </Card>
 
@@ -199,7 +177,7 @@ export const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {applications.filter(app => app.status === 'pending').length}
+                {ngos.filter(ngo => ngo.status === 'pending').length}
               </div>
             </CardContent>
           </Card>
@@ -211,7 +189,7 @@ export const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {applications.filter(app => app.status === 'approved').length}
+                {ngos.filter(ngo => ngo.status === 'approved').length}
               </div>
             </CardContent>
           </Card>
@@ -223,7 +201,7 @@ export const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {applications.filter(app => app.status === 'rejected').length}
+                {ngos.filter(ngo => ngo.status === 'rejected').length}
               </div>
             </CardContent>
           </Card>
@@ -234,9 +212,9 @@ export const AdminDashboard = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               {[
-                { id: 'pending', label: 'Pending Review', count: applications.filter(app => app.status === 'pending').length },
-                { id: 'approved', label: 'Approved', count: applications.filter(app => app.status === 'approved').length },
-                { id: 'rejected', label: 'Rejected', count: applications.filter(app => app.status === 'rejected').length }
+                { id: 'pending', label: 'Pending Review', count: ngos.filter(ngo => ngo.status === 'pending').length },
+                { id: 'approved', label: 'Approved', count: ngos.filter(ngo => ngo.status === 'approved').length },
+                { id: 'rejected', label: 'Rejected', count: ngos.filter(ngo => ngo.status === 'rejected').length }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -259,7 +237,7 @@ export const AdminDashboard = () => {
 
         {/* Applications List */}
         <div className="space-y-4">
-          {filteredApplications.length === 0 ? (
+          {filteredNGOs.length === 0 ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8 text-gray-500">
@@ -269,22 +247,22 @@ export const AdminDashboard = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredApplications.map((application) => (
-              <Card key={application.id} className="hover:shadow-md transition-shadow">
+            filteredNGOs.map((ngo) => (
+              <Card key={ngo.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-lg">{String(application.ngoName || '')}</CardTitle>
+                      <CardTitle className="text-lg">{safeRender(ngo.organizationName)}</CardTitle>
                       <CardDescription>
-                        {String(application.category || '')} • Submitted {new Date(application.submittedAt).toLocaleDateString()}
+                        {safeRender(ngo.category)} • Submitted {new Date(ngo.createdAt).toLocaleDateString()}
                       </CardDescription>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {getStatusBadge(application.status)}
+                      {getStatusBadge(ngo.status)}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedApplicationWithLog(application)}
+                        onClick={() => setSelectedNGO(ngo)}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
@@ -296,23 +274,23 @@ export const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                     <div className="flex items-center">
                       <Mail className="h-4 w-4 mr-2" />
-                      {String(application.email || '')}
+                      {safeRender(ngo.email)}
                     </div>
                     <div className="flex items-center">
                       <Phone className="h-4 w-4 mr-2" />
-                      {String(application.phone || '')}
+                      {safeRender(ngo.phone)}
                     </div>
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-2" />
-                      {String(application.address || '')}
+                      {safeRender(ngo.address)}
                     </div>
                     <div className="flex items-center">
                       <Globe className="h-4 w-4 mr-2" />
-                      {String(application.website || '')}
+                      {safeRender(ngo.website)}
                     </div>
                   </div>
                   <p className="mt-3 text-sm text-gray-600 line-clamp-2">
-                    {String(application.description || '')}
+                    {safeRender(ngo.description)}
                   </p>
                 </CardContent>
               </Card>
@@ -322,20 +300,20 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Application Detail Modal */}
-      {selectedApplication && (
+      {selectedNGO && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {String(selectedApplication.ngoName || '')}
+                  {safeRender(selectedNGO.organizationName)}
                 </h2>
                 <div className="flex items-center space-x-2">
-                  {getStatusBadge(selectedApplication.status)}
+                  {getStatusBadge(selectedNGO.status)}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedApplication(null)}
+                    onClick={() => setSelectedNGO(null)}
                   >
                     Close
                   </Button>
@@ -347,26 +325,26 @@ export const AdminDashboard = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Organization Details</h3>
                     <div className="space-y-2 text-sm">
-                      <div><strong>Category:</strong> {String(selectedApplication.category || '')}</div>
-                      <div><strong>Founded Year:</strong> {String(selectedApplication.foundedYear || '')}</div>
-                      <div><strong>Registration Number:</strong> {String(selectedApplication.registrationNumber || '')}</div>
-                      <div><strong>Website:</strong> <a href={String(selectedApplication.website || '')} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{String(selectedApplication.website || '')}</a></div>
+                      <div><strong>Category:</strong> {safeRender(selectedNGO.category)}</div>
+                      <div><strong>Founded Year:</strong> {safeRender(selectedNGO.foundedYear)}</div>
+                      <div><strong>Registration Number:</strong> {safeRender(selectedNGO.registrationNumber)}</div>
+                      <div><strong>Website:</strong> <a href={safeRender(selectedNGO.website)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{safeRender(selectedNGO.website)}</a></div>
                     </div>
                   </div>
 
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Contact Information</h3>
                     <div className="space-y-2 text-sm">
-                      <div><strong>Contact Person:</strong> {String(selectedApplication.contactPerson || '')}</div>
-                      <div><strong>Email:</strong> {String(selectedApplication.contactEmail || '')}</div>
-                      <div><strong>Phone:</strong> {String(selectedApplication.phone || '')}</div>
-                      <div><strong>Address:</strong> {String(selectedApplication.address || '')}</div>
+                      <div><strong>Contact Person:</strong> {safeRender(selectedNGO.contactPerson, 'No contact person')}</div>
+                      <div><strong>Email:</strong> {safeRender(selectedNGO.contactEmail)}</div>
+                      <div><strong>Phone:</strong> {safeRender(selectedNGO.phone)}</div>
+                      <div><strong>Address:</strong> {safeRender(selectedNGO.address)}</div>
                     </div>
                   </div>
 
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                    <p className="text-sm text-gray-600">{String(selectedApplication.description || '')}</p>
+                    <p className="text-sm text-gray-600">{safeRender(selectedNGO.description)}</p>
                   </div>
                 </div>
 
@@ -374,7 +352,7 @@ export const AdminDashboard = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Documents</h3>
                     <div className="space-y-2">
-                      {selectedApplication.documents && Object.entries(selectedApplication.documents).map(([key, filename]) => (
+                      {selectedNGO.documents && Object.entries(selectedNGO.documents).map(([key, filename]) => (
                         <div key={key} className="flex items-center space-x-2 text-sm">
                           <FileText className="h-4 w-4 text-gray-400" />
                           <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
@@ -384,12 +362,12 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {selectedApplication.status === 'pending' && (
+                  {selectedNGO.status === 'pending' && (
                     <div className="space-y-3">
                       <h3 className="font-semibold text-gray-900">Review Decision</h3>
                       <div className="flex space-x-3">
                         <Button
-                          onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
+                          onClick={() => handleApproveNGO(selectedNGO._id)}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -397,7 +375,12 @@ export const AdminDashboard = () => {
                         </Button>
                         <Button
                           variant="destructive"
-                          onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected')}
+                          onClick={() => {
+                            const reason = prompt('Please provide a reason for rejection:')
+                            if (reason) {
+                              handleRejectNGO(selectedNGO._id, reason)
+                            }
+                          }}
                         >
                           <XCircle className="h-4 w-4 mr-2" />
                           Reject

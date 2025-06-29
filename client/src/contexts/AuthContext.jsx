@@ -62,11 +62,17 @@ export const AuthProvider = ({ children }) => {
   // Sign in function
   const login = async (email, password) => {
     try {
+      console.log('AuthContext: Attempting login for:', email)
       const response = await authAPI.login(email, password)
+      console.log('AuthContext: Login response:', response)
+      
       tokenManager.setToken(response.token)
       setCurrentUser(response.user)
+      console.log('AuthContext: Set current user:', response.user)
+      
       return response.user
     } catch (error) {
+      console.error('AuthContext: Login error:', error)
       throw error
     }
   }

@@ -82,9 +82,9 @@ export const NgoDetails = () => {
       const ngoApplication = {
         id: Date.now(),
         ...formData,
-        uid: currentUser.uid,
+        userId: currentUser._id,
         email: currentUser.email,
-        ngoName: currentUser.displayName,
+        ngoName: currentUser.name,
         documents: documents,
         status: 'pending', // pending, approved, rejected
         submittedAt: new Date().toISOString()
@@ -99,9 +99,9 @@ export const NgoDetails = () => {
       // Store NGO details in localStorage for the user
       localStorage.setItem('ngoDetails', JSON.stringify({
         ...formData,
-        uid: currentUser.uid,
+        userId: currentUser._id,
         email: currentUser.email,
-        ngoName: currentUser.displayName,
+        ngoName: currentUser.name,
         documents: documents,
         status: 'pending',
         createdAt: new Date().toISOString()
@@ -202,7 +202,6 @@ export const NgoDetails = () => {
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       id="phone"
-                      type="tel"
                       required
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
@@ -212,7 +211,9 @@ export const NgoDetails = () => {
                     />
                   </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
                   <div className="relative">
@@ -223,66 +224,43 @@ export const NgoDetails = () => {
                       value={formData.website}
                       onChange={(e) => handleInputChange('website', e.target.value)}
                       className="pl-10"
-                      placeholder="https://your-website.com"
+                      placeholder="https://example.com"
                       disabled={loading}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Organization Category *</Label>
+                  <Label htmlFor="category">Category *</Label>
                   <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="education">Education</SelectItem>
-                      <SelectItem value="healthcare">Healthcare</SelectItem>
-                      <SelectItem value="environment">Environment</SelectItem>
-                      <SelectItem value="poverty">Poverty Alleviation</SelectItem>
-                      <SelectItem value="women">Women Empowerment</SelectItem>
-                      <SelectItem value="children">Children & Youth</SelectItem>
-                      <SelectItem value="disability">Disability Support</SelectItem>
-                      <SelectItem value="animal">Animal Welfare</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Education">Education</SelectItem>
+                      <SelectItem value="Environment">Environment</SelectItem>
+                      <SelectItem value="Community Service">Community Service</SelectItem>
+                      <SelectItem value="Animal Welfare">Animal Welfare</SelectItem>
+                      <SelectItem value="Disaster Relief">Disaster Relief</SelectItem>
+                      <SelectItem value="Human Rights">Human Rights</SelectItem>
+                      <SelectItem value="Arts & Culture">Arts & Culture</SelectItem>
+                      <SelectItem value="Sports">Sports</SelectItem>
+                      <SelectItem value="Technology">Technology</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="foundedYear">Founded Year</Label>
-                  <Input
-                    id="foundedYear"
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    value={formData.foundedYear}
-                    onChange={(e) => handleInputChange('foundedYear', e.target.value)}
-                    placeholder="e.g., 2010"
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Registration Number</Label>
-                  <Input
-                    id="registrationNumber"
-                    value={formData.registrationNumber}
-                    onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
-                    placeholder="Enter registration number"
-                    disabled={loading}
-                  />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Organization Description *</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
                   required
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Describe your organization's mission, vision, and activities..."
+                  placeholder="Describe your organization's mission and activities..."
                   rows={4}
                   disabled={loading}
                 />
@@ -293,9 +271,12 @@ export const NgoDetails = () => {
           {/* Contact Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Contact Information
+              </CardTitle>
               <CardDescription>
-                Primary contact person details
+                Primary contact person for volunteer coordination
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -313,14 +294,14 @@ export const NgoDetails = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Person Email *</Label>
+                  <Label htmlFor="contactEmail">Contact Email *</Label>
                   <Input
                     id="contactEmail"
                     type="email"
                     required
                     value={formData.contactEmail}
                     onChange={(e) => handleInputChange('contactEmail', e.target.value)}
-                    placeholder="Enter contact person email"
+                    placeholder="contact@organization.com"
                     disabled={loading}
                   />
                 </div>
@@ -336,95 +317,83 @@ export const NgoDetails = () => {
                 Required Documents
               </CardTitle>
               <CardDescription>
-                Upload necessary documents for verification
+                Upload required documents for verification
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="registrationCertificate">Registration Certificate</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <input
+                  <Label htmlFor="registrationCertificate">Registration Certificate *</Label>
+                  <div className="relative">
+                    <Input
                       id="registrationCertificate"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('registrationCertificate', e.target.files[0])}
-                      className="hidden"
                       disabled={loading}
                     />
-                    <label htmlFor="registrationCertificate" className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                      {documents.registrationCertificate ? documents.registrationCertificate.name : 'Click to upload'}
-                    </label>
+                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="taxExemption">Tax Exemption Certificate</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <input
+                  <div className="relative">
+                    <Input
                       id="taxExemption"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('taxExemption', e.target.files[0])}
-                      className="hidden"
                       disabled={loading}
                     />
-                    <label htmlFor="taxExemption" className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                      {documents.taxExemption ? documents.taxExemption.name : 'Click to upload'}
-                    </label>
+                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="annualReport">Annual Report (Optional)</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <input
+                  <Label htmlFor="annualReport">Annual Report</Label>
+                  <div className="relative">
+                    <Input
                       id="annualReport"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={(e) => handleFileChange('annualReport', e.target.files[0])}
-                      className="hidden"
                       disabled={loading}
                     />
-                    <label htmlFor="annualReport" className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                      {documents.annualReport ? documents.annualReport.name : 'Click to upload'}
-                    </label>
+                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium">Document Requirements:</p>
-                  <ul className="mt-1 space-y-1">
-                    <li>• Registration Certificate: Required for verification</li>
-                    <li>• Tax Exemption Certificate: Required for tax benefits</li>
-                    <li>• Annual Report: Optional but recommended</li>
-                    <li>• Supported formats: PDF, JPG, JPEG, PNG</li>
-                  </ul>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
+          {/* Submit */}
+          <Card>
+            <CardContent className="pt-6">
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={loading || !isFormValid}
-            >
-              {loading ? 'Saving Details...' : 'Submit for Review'}
-            </Button>
-          </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {isFormValid ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-yellow-500" />
+                  )}
+                  <span className="text-sm text-gray-600">
+                    {isFormValid ? 'All required fields completed' : 'Please complete all required fields'}
+                  </span>
+                </div>
+
+                <Button type="submit" disabled={!isFormValid || loading}>
+                  {loading ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </form>
       </div>
     </div>

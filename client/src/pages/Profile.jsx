@@ -306,19 +306,23 @@ export const Profile = () => {
           )}
           
           <div className="flex flex-wrap gap-2">
-            {profileData.skills.map((skill, index) => (
-              <span key={index} className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full">
-                {skill}
-                {isEditing && (
-                  <button
-                    onClick={() => removeSkill(skill)}
-                    className="hover:text-red-900"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </span>
-            ))}
+            {Array.isArray(profileData.skills) && profileData.skills.length > 0 ? (
+  profileData.skills.map((skill, index) => (
+    <span key={index} className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full">
+      {skill}
+      {isEditing && (
+        <button
+          onClick={() => removeSkill(skill)}
+          className="hover:text-red-900"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
+  ))
+) : (
+  <span className="text-gray-500">No skills listed.</span>
+)}
           </div>
         </div>
       </div>
@@ -387,4 +391,4 @@ export const Profile = () => {
       </div>
     </div>
   )
-} 
+}

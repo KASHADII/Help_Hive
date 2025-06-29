@@ -250,9 +250,15 @@ router.post('/', [
     }
 
     // Check if user has an approved NGO
-    const ngo = await NGO.findOne({ user: req.user._id, status: 'approved' });
-    if (!ngo && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only approved NGOs can create tasks' });
+    const ngo = await NGO.findOne({ user: req.user._id });
+    if (!ngo) {
+      return res.status(403).json({ message: 'NGO profile not found. Please complete your NGO registration first.' });
+    }
+    
+    // For development: allow unapproved NGOs to create tasks
+    // In production, this should be: if (!ngo.status === 'approved' && req.user.role !== 'admin')
+    if (ngo.status !== 'approved' && req.user.role !== 'admin' && process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ message: 'Only approved NGOs can create tasks. Please wait for admin approval.' });
     }
 
     const taskData = {

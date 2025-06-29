@@ -10,6 +10,8 @@ export const Home = () => {
   const [recentTasks, setRecentTasks] = useState([])
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
+  const [backendError, setBackendError] = useState(false)
+  const [renderError, setRenderError] = useState(null)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -30,8 +32,11 @@ export const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
+        
         // Fetch recent tasks
         const tasksResponse = await tasksAPI.getAll({ limit: 3, sort: 'createdAt' })
+        console.log('Tasks response:', tasksResponse)
         setRecentTasks(tasksResponse.data || [])
 
         // Fetch stats (you might want to create a dedicated stats endpoint)
@@ -44,39 +49,15 @@ export const Home = () => {
         setStats(defaultStats)
       } catch (error) {
         console.error('Error fetching home data:', error)
-        // Fallback to default data
-        setRecentTasks([
-          {
-            id: 1,
-            title: 'Help organize food drive for local shelter',
-            organization: 'Community Care Center',
-            location: 'Downtown',
-            duration: '2-3 hours',
-            category: 'Community Service',
-            rating: 4.8,
-            image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop'
-          },
-          {
-            id: 2,
-            title: 'Teach basic computer skills to seniors',
-            organization: 'Senior Tech Support',
-            location: 'Community Center',
-            duration: '1-2 hours',
-            category: 'Education',
-            rating: 4.9,
-            image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=300&fit=crop'
-          },
-          {
-            id: 3,
-            title: 'Assist with environmental cleanup event',
-            organization: 'Green Earth Initiative',
-            location: 'City Park',
-            duration: '3-4 hours',
-            category: 'Environment',
-            rating: 4.7,
-            image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop'
-          }
-        ])
+        // Set empty arrays and default stats on error
+        setRecentTasks([])
+        setBackendError(true)
+        const defaultStats = [
+          { number: '500+', label: 'Active Volunteers', icon: Users },
+          { number: '50+', label: 'Partner NGOs', icon: Building },
+          { number: '1000+', label: 'Tasks Completed', icon: CheckCircle },
+          { number: '25+', label: 'Communities Served', icon: Globe }
+        ]
         setStats(defaultStats)
       } finally {
         setLoading(false)
@@ -84,6 +65,17 @@ export const Home = () => {
     }
 
     fetchData()
+  }, [])
+
+  // Error boundary for rendering errors
+  useEffect(() => {
+    const handleError = (error) => {
+      console.error('Home page error:', error)
+      setRenderError(error.message)
+    }
+
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
   }, [])
 
   const features = [
@@ -115,6 +107,20 @@ export const Home = () => {
 
   return (
     <div className="space-y-16">
+      {/* Error Display */}
+      {renderError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mx-4 mt-4">
+          <h3 className="font-semibold text-red-900 mb-2">Rendering Error:</h3>
+          <p className="text-red-700 text-sm">{renderError}</p>
+          <button 
+            onClick={() => setRenderError(null)} 
+            className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Background Elements */}
@@ -329,6 +335,11 @@ export const Home = () => {
                 Recent Tasks
               </h2>
               <p className="text-gray-600">Discover opportunities to make a difference</p>
+              {backendError && (
+                <p className="text-orange-600 text-sm mt-2">
+                  ⚠️ Backend connection issue. Tasks may not be displayed.
+                </p>
+              )}
             </div>
             <Link to="/tasks">
               <Button variant="outline" className="hover-lift">
@@ -353,22 +364,22 @@ export const Home = () => {
                   </div>
                 </div>
               ))
-            ) : (
+            ) : recentTasks.length > 0 ? (
               recentTasks.map((task, index) => (
                 <div 
-                  key={task._id || task.id} 
+                  key={task._id || task.id || index} 
                   className="bg-white rounded-2xl card-shadow-lg hover-lift overflow-hidden animate-fade-in-up"
                   style={{ animationDelay: `${index * 200}ms` }}
                 >
                   <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
                     <img 
                       src={task.images?.[0] || task.image || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop'} 
-                      alt={task.title}
+                      alt={task.title || 'Task'}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-                        {task.category}
+                        {task.category || 'General'}
                       </span>
                     </div>
                     {task.rating && (
@@ -381,20 +392,22 @@ export const Home = () => {
                   
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">
-                      {task.title}
+                      {task.title || 'Untitled Task'}
                     </h3>
                     <p className="text-gray-600 mb-4 font-medium">
-                      {task.ngo?.name || task.organization}
+                      {task.ngo?.organizationName || task.ngo?.name || task.organization || 'Organization'}
                     </p>
                     
                     <div className="space-y-2 text-sm text-gray-500 mb-6">
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-blue-500" />
-                        {task.location}
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {typeof task.location === 'object'
+    ? `${task.location.address}, ${task.location.city}, ${task.location.state} ${task.location.zipCode}`
+    : task.location}
                       </div>
                       <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-2 text-green-500" />
-                        {task.duration || `${task.estimatedHours || 2} hours`}
+                        {task.duration || `${task.estimatedHours || task.requirements?.estimatedHours || 2} hours`}
                       </div>
                     </div>
                     
@@ -406,6 +419,22 @@ export const Home = () => {
                   </div>
                 </div>
               ))
+            ) : (
+              // No tasks available
+              <div className="col-span-full text-center py-12">
+                <div className="bg-white rounded-2xl card-shadow-lg p-8">
+                  <Sparkles className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Tasks Available Yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    Be the first to post a volunteer opportunity and make a difference in your community!
+                  </p>
+                  <Link to="/post-task">
+                    <Button className="gradient-primary hover-lift">
+                      Post First Task
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -446,4 +475,4 @@ export const Home = () => {
       </section>
     </div>
   )
-} 
+}

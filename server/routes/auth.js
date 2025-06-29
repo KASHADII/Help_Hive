@@ -205,7 +205,9 @@ router.post('/ngo-register', [
       address,
       website,
       mission,
-      vision
+      vision,
+      status: 'pending',
+      isActive: false
     });
 
     // Generate token
@@ -213,7 +215,7 @@ router.post('/ngo-register', [
 
     res.status(201).json({
       success: true,
-      message: 'NGO registered successfully. Pending admin approval.',
+      message: 'NGO registered successfully. Your account is pending admin approval. You will be notified once approved.',
       token,
       user: user.getPublicProfile(),
       ngo: ngo.getPublicProfile()
@@ -264,6 +266,23 @@ router.post('/login', [
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // For NGO users, check approval status
+    if (user.role === 'ngo') {
+      const ngo = await NGO.findOne({ user: user._id });
+      if (ngo && ngo.status === 'pending') {
+        return res.status(403).json({ 
+          message: 'Your NGO account is pending admin approval. You will be notified once approved.',
+          status: 'pending'
+        });
+      }
+      if (ngo && ngo.status === 'rejected') {
+        return res.status(403).json({ 
+          message: `Your NGO registration was rejected. Reason: ${ngo.rejectionReason || 'No reason provided'}`,
+          status: 'rejected'
+        });
+      }
     }
 
     // Generate token
@@ -355,7 +374,7 @@ router.get('/me', protect, async (req, res) => {
 
     res.json({
       success: true,
-      user: user.getPublicProfile()
+      data: user.getPublicProfile()
     });
   } catch (error) {
     console.error('Get user error:', error);

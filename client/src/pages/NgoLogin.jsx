@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Mail, Lock, Eye, EyeOff, Building } from 'lucide-react'
-import { authAPI } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export const NgoLogin = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +17,7 @@ export const NgoLogin = () => {
   const [error, setError] = useState('')
   
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -25,25 +26,33 @@ export const NgoLogin = () => {
       setError('')
       setLoading(true)
       
-      const response = await authAPI.login(formData.email, formData.password)
+      console.log('NgoLogin: Starting login process for:', formData.email)
+      const user = await login(formData.email, formData.password)
+      console.log('NgoLogin: Login successful, user:', user)
       
       // Check if the user is an NGO
-      if (response.user.role !== 'ngo') {
+      if (user.role !== 'ngo') {
+        console.log('NgoLogin: User is not an NGO, role:', user.role)
         setError('This account is not registered as an NGO. Please use the volunteer login.')
         return
       }
       
-      // Store token and user data
-      localStorage.setItem('token', response.token)
-      localStorage.setItem('user', JSON.stringify(response.user))
-      
+      console.log('NgoLogin: User is NGO, redirecting to dashboard')
+      // Redirect to NGO dashboard
       navigate('/ngo-dashboard')
     } catch (error) {
-      console.error('NGO Login error:', error)
+      console.error('NgoLogin: Login error:', error)
       
       // Handle different types of errors
       if (error.message) {
-        setError(error.message)
+        // Check for specific approval status errors
+        if (error.message.includes('pending admin approval')) {
+          setError('Your NGO account is pending admin approval. You will be notified once approved. Please check back later.')
+        } else if (error.message.includes('rejected')) {
+          setError(error.message)
+        } else {
+          setError(error.message)
+        }
       } else {
         setError('Failed to log in. Please check your credentials and try again.')
       }

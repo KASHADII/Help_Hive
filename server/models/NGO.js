@@ -117,7 +117,7 @@ const ngoSchema = new mongoose.Schema({
   documents: {
     registrationCertificate: {
       type: String,
-      required: [true, 'Registration certificate is required']
+      required: false
     },
     taxExemption: String,
     annualReport: String,

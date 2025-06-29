@@ -15,7 +15,7 @@ export const Navbar = () => {
   // Improved NGO user detection - check if user has NGO role or NGO-specific properties
   const isNgoUser = currentUser && (
     currentUser.role === 'ngo' || 
-    (currentUser.displayName && !currentUser.displayName.includes(' ')) ||
+    (currentUser.name && !currentUser.name.includes(' ')) ||
     currentUser.email?.includes('ngo') ||
     currentUser.email?.includes('organization')
   )
@@ -111,80 +111,80 @@ export const Navbar = () => {
           </div>
 
           {/* Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3">
             {currentUser ? (
-              <>
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">
-                      Welcome, {currentUser.displayName || currentUser.email}
-                    </span>
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                      isNgoUser 
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                        : 'bg-green-100 text-green-800 border border-green-200'
-                    }`}>
-                      {isNgoUser ? 'NGO' : 'Volunteer'}
-                    </span>
-                  </div>
-                  <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
-                    <Button variant="outline" size="sm" className="hover-lift">
-                      {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
-                      {isNgoUser ? 'NGO Dashboard' : 'Profile'}
-                    </Button>
-                  </Link>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleLogout}
-                    className="hover-lift hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </Button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {currentUser.name || currentUser.email}
+                  </span>
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                    isNgoUser 
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                      : 'bg-green-100 text-green-800 border border-green-200'
+                  }`}>
+                    {isNgoUser ? 'NGO' : 'Volunteer'}
+                  </span>
                 </div>
-              </>
-            ) : (
-              <div className="relative">
-                <Button
-                  variant="outline"
+                <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
+                  <Button variant="outline" size="sm" className="hover-lift">
+                    {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
+                    {isNgoUser ? 'NGO Dashboard' : 'Profile'}
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
                   size="sm"
-                  onClick={() => setShowAuthOptions(!showAuthOptions)}
-                  className="hover-lift"
+                  onClick={handleLogout}
+                  className="hover-lift hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                 >
-                  Sign In
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
                 </Button>
-                
-                {showAuthOptions && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-scale-in">
-                    <div className="p-2">
-                      <Link
-                        to="/login"
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                        onClick={() => setShowAuthOptions(false)}
-                      >
-                        <User className="h-4 w-4 mr-3 text-blue-500" />
-                        <div>
-                          <div className="font-medium">Volunteer Login</div>
-                          <div className="text-xs text-gray-500">For students & individuals</div>
-                        </div>
-                      </Link>
-                      <Link
-                        to="/ngo-login"
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                        onClick={() => setShowAuthOptions(false)}
-                      >
-                        <Building className="h-4 w-4 mr-3 text-green-500" />
-                        <div>
-                          <div className="font-medium">NGO Login</div>
-                          <div className="text-xs text-gray-500">For organizations</div>
-                        </div>
-                      </Link>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAuthOptions(!showAuthOptions)}
+                    className="hover-lift"
+                  >
+                    Sign In
+                  </Button>
+                  
+                  {showAuthOptions && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-scale-in">
+                      <div className="p-2">
+                        <Link
+                          to="/login"
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                          onClick={() => setShowAuthOptions(false)}
+                        >
+                          <User className="h-4 w-4 mr-3 text-blue-500" />
+                          <div>
+                            <div className="font-medium">Volunteer Login</div>
+                            <div className="text-xs text-gray-500">For students & individuals</div>
+                          </div>
+                        </Link>
+                        <Link
+                          to="/ngo-login"
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                          onClick={() => setShowAuthOptions(false)}
+                        >
+                          <Building className="h-4 w-4 mr-3 text-green-500" />
+                          <div>
+                            <div className="font-medium">NGO Login</div>
+                            <div className="text-xs text-gray-500">For organizations</div>
+                          </div>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 
-                <div className="ml-3 flex space-x-2">
+                <div className="flex items-center space-x-2">
                   <Link to="/register">
                     <Button size="sm" className="gradient-primary hover-lift">
                       <User className="h-4 w-4 mr-2" />
@@ -245,7 +245,7 @@ export const Navbar = () => {
                   <div className="flex flex-col space-y-3">
                     <div className="px-4 py-3 bg-gray-50 rounded-xl">
                       <div className="text-sm text-gray-600 mb-2">
-                        Welcome, {currentUser.displayName || currentUser.email}
+                        Welcome, {currentUser.name || currentUser.email}
                       </div>
                       <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                         isNgoUser 

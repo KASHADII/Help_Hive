@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Textarea } from '../components/ui/textarea'
-import { Mail, Lock, Eye, EyeOff, Building, User, MapPin, Phone, Calendar } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Building, User, MapPin, Phone, AlertCircle } from 'lucide-react'
 import { authAPI } from '../lib/api'
 
 export const NgoRegister = () => {
@@ -44,39 +44,92 @@ export const NgoRegister = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
+  const [generalError, setGeneralError] = useState('')
 
   const navigate = useNavigate()
+
+  const validateField = (fieldName, value) => {
+    switch (fieldName) {
+      case 'name':
+        return !value.trim() ? 'Your full name is required' : ''
+      case 'email':
+        if (!value.trim()) return 'Your email address is required'
+        if (!/\S+@\S+\.\S+/.test(value)) return 'Please enter a valid email address'
+        return ''
+      case 'password':
+        if (!value) return 'Password is required'
+        if (value.length < 6) return 'Password must be at least 6 characters long'
+        return ''
+      case 'confirmPassword':
+        if (!value) return 'Please confirm your password'
+        if (value !== formData.password) return 'Passwords do not match'
+        return ''
+      case 'organizationName':
+        return !value.trim() ? 'Organization name is required' : ''
+      case 'registrationNumber':
+        return !value.trim() ? 'Registration number is required' : ''
+      case 'category':
+        return !value ? 'Please select an organization category' : ''
+      case 'description':
+        return !value.trim() ? 'Organization description is required' : ''
+      case 'contactPersonName':
+        return !value.trim() ? 'Primary contact person name is required' : ''
+      case 'contactPersonEmail':
+        if (!value.trim()) return 'Primary contact person email is required'
+        if (!/\S+@\S+\.\S+/.test(value)) return 'Please enter a valid email address'
+        return ''
+      case 'contactPersonPhone':
+        return !value.trim() ? 'Primary contact person phone is required' : ''
+      case 'street':
+        return !value.trim() ? 'Street address is required' : ''
+      case 'city':
+        return !value.trim() ? 'City is required' : ''
+      case 'state':
+        return !value.trim() ? 'State is required' : ''
+      case 'zipCode':
+        return !value.trim() ? 'ZIP code is required' : ''
+      default:
+        return ''
+    }
+  }
+
+  const handleFieldChange = (fieldName, value) => {
+    setFormData({ ...formData, [fieldName]: value })
+    
+    // Clear error for this field when user starts typing
+    if (errors[fieldName]) {
+      setErrors({ ...errors, [fieldName]: '' })
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match!')
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long.')
-      return
-    }
-
-    // Validate required fields
+    // Validate all fields
+    const newErrors = {}
     const requiredFields = [
-      'name', 'email', 'organizationName', 'registrationNumber', 
-      'category', 'description', 'contactPersonName', 'contactPersonEmail',
-      'contactPersonPhone', 'street', 'city', 'state', 'zipCode'
+      'name', 'email', 'password', 'confirmPassword', 'organizationName', 
+      'registrationNumber', 'category', 'description', 'contactPersonName', 
+      'contactPersonEmail', 'contactPersonPhone', 'street', 'city', 'state', 'zipCode'
     ]
     
-    for (const field of requiredFields) {
-      if (!formData[field]?.trim()) {
-        setError(`${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required.`)
-        return
+    requiredFields.forEach(field => {
+      const error = validateField(field, formData[field])
+      if (error) {
+        newErrors[field] = error
       }
+    })
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)  
+      setGeneralError('Please fix the errors below before submitting.')
+      return
     }
     
     try {
-      setError('')
+      setErrors({})
+      setGeneralError('')
       setLoading(true)
       
       const ngoData = {
@@ -117,23 +170,32 @@ export const NgoRegister = () => {
       const response = await authAPI.ngoRegister(ngoData)
       
       // Registration successful
-      navigate('/ngo-dashboard')
+      alert('NGO registration successful! Your account is pending admin approval. You will be notified once approved.')
+      navigate('/ngo-login')
     } catch (error) {
       console.error('NGO Registration error:', error)
       
       // Handle different types of errors
       if (error.message) {
-        setError(error.message)
+        setGeneralError(error.message)
       } else if (error.errors && Array.isArray(error.errors)) {
         // Handle validation errors from backend
         const errorMessages = error.errors.map(err => err.msg).join(', ')
-        setError(errorMessages)
+        setGeneralError(errorMessages)
       } else {
-        setError('Failed to create NGO account. Please try again.')
+        setGeneralError('Failed to create NGO account. Please try again.')
       }
     } finally {
       setLoading(false)
     }
+  }
+
+  const getErrorStyle = (fieldName) => {
+    return errors[fieldName] ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
+  }
+
+  const getErrorCount = () => {
+    return Object.keys(errors).filter(key => errors[key]).length
   }
 
   const categories = [
@@ -158,40 +220,66 @@ export const NgoRegister = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
+          {/* Error Summary */}
+          {Object.keys(errors).filter(key => errors[key]).length > 0 && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-red-600 font-medium">
+                  ⚠️ {Object.keys(errors).filter(key => errors[key]).length} validation error{Object.keys(errors).filter(key => errors[key]).length > 1 ? 's' : ''} found:
+                </span>
+              </div>
+              <ul className="text-sm text-red-600 space-y-1">
+                {Object.entries(errors).map(([field, error]) => error && (
+                  <li key={field} className="flex items-center gap-2">
+                    <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                    {error}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
-          {/* User Information */}
+          {generalError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{generalError}</p>
+            </div>
+          )}
+
+          {/* Account Holder Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Contact Person Information
+                Account Holder Information
               </CardTitle>
               <CardDescription>
-                Primary contact person for the organization
+                Your personal account details for logging into HelpHive
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
+                  <Label htmlFor="name">Your Full Name *</Label>
                   <Input
                     id="name"
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
                     placeholder="Enter your full name"
                     disabled={loading}
+                    className={getErrorStyle('name')}
                   />
+                  {errors.name && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
+                  <Label htmlFor="email">Your Email Address *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
@@ -199,25 +287,31 @@ export const NgoRegister = () => {
                       type="email"
                       required
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="pl-10"
+                      onChange={(e) => handleFieldChange('email', e.target.value)}
+                      className={`pl-10 ${getErrorStyle('email')}`}
                       placeholder="your.email@organization.com"
                       disabled={loading}
                     />
                   </div>
+                  {errors.email && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Your Phone Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       id="phone"
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => handleFieldChange('phone', e.target.value)}
                       className="pl-10"
                       placeholder="+1 (555) 123-4567"
                       disabled={loading}
@@ -226,7 +320,7 @@ export const NgoRegister = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password">Account Password *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
@@ -234,8 +328,8 @@ export const NgoRegister = () => {
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="pl-10 pr-10"
+                      onChange={(e) => handleFieldChange('password', e.target.value)}
+                      className={`pl-10 pr-10 ${getErrorStyle('password')}`}
                       placeholder="Create a password"
                       disabled={loading}
                     />
@@ -248,6 +342,12 @@ export const NgoRegister = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {errors.password && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -260,8 +360,8 @@ export const NgoRegister = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="pl-10 pr-10"
+                    onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
+                    className={`pl-10 pr-10 ${getErrorStyle('confirmPassword')}`}
                     placeholder="Confirm your password"
                     disabled={loading}
                   />
@@ -274,6 +374,13 @@ export const NgoRegister = () => {
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="text-xs text-gray-500">Password must be at least 6 characters long</p>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -298,10 +405,17 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.organizationName}
-                    onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
+                    onChange={(e) => handleFieldChange('organizationName', e.target.value)}
                     placeholder="Enter organization name"
                     disabled={loading}
+                    className={getErrorStyle('organizationName')}
                   />
+                  {errors.organizationName && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.organizationName}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -311,18 +425,25 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.registrationNumber}
-                    onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
+                    onChange={(e) => handleFieldChange('registrationNumber', e.target.value)}
                     placeholder="Enter registration number"
                     disabled={loading}
+                    className={getErrorStyle('registrationNumber')}
                   />
+                  {errors.registrationNumber && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.registrationNumber}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                    <SelectTrigger>
+                  <Select value={formData.category} onValueChange={(value) => handleFieldChange('category', value)}>
+                    <SelectTrigger className={getErrorStyle('category')}>
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -333,11 +454,17 @@ export const NgoRegister = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.category && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.category}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="foundedYear">Founded Year *</Label>
-                  <Select value={formData.foundedYear.toString()} onValueChange={(value) => setFormData({ ...formData, foundedYear: parseInt(value) })}>
+                  <Select value={formData.foundedYear.toString()} onValueChange={(value) => handleFieldChange('foundedYear', parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
@@ -358,11 +485,18 @@ export const NgoRegister = () => {
                   id="description"
                   required
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder="Describe your organization's mission and activities..."
                   rows={4}
                   disabled={loading}
+                  className={getErrorStyle('description')}
                 />
+                {errors.description && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.description}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -372,7 +506,7 @@ export const NgoRegister = () => {
                     id="website"
                     type="url"
                     value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    onChange={(e) => handleFieldChange('website', e.target.value)}
                     placeholder="https://example.com"
                     disabled={loading}
                   />
@@ -384,7 +518,7 @@ export const NgoRegister = () => {
                     id="mission"
                     type="text"
                     value={formData.mission}
-                    onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
+                    onChange={(e) => handleFieldChange('mission', e.target.value)}
                     placeholder="Organization mission"
                     disabled={loading}
                   />
@@ -396,7 +530,7 @@ export const NgoRegister = () => {
                     id="vision"
                     type="text"
                     value={formData.vision}
-                    onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                    onChange={(e) => handleFieldChange('vision', e.target.value)}
                     placeholder="Organization vision"
                     disabled={loading}
                   />
@@ -410,13 +544,19 @@ export const NgoRegister = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Primary Contact Person
+                Organization's Primary Contact Person
               </CardTitle>
               <CardDescription>
-                Main contact person for volunteer coordination
+                Main contact person for volunteer coordination (can be different from account holder)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> This is the person who will be contacted by volunteers about your tasks. 
+                  This can be the same as the account holder or a different person in your organization.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="contactPersonName">Contact Person Name *</Label>
@@ -425,10 +565,17 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.contactPersonName}
-                    onChange={(e) => setFormData({ ...formData, contactPersonName: e.target.value })}
+                    onChange={(e) => handleFieldChange('contactPersonName', e.target.value)}
                     placeholder="Contact person full name"
                     disabled={loading}
+                    className={getErrorStyle('contactPersonName')}
                   />
+                  {errors.contactPersonName && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.contactPersonName}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -440,12 +587,18 @@ export const NgoRegister = () => {
                       type="email"
                       required
                       value={formData.contactPersonEmail}
-                      onChange={(e) => setFormData({ ...formData, contactPersonEmail: e.target.value })}
-                      className="pl-10"
+                      onChange={(e) => handleFieldChange('contactPersonEmail', e.target.value)}
+                      className={`pl-10 ${getErrorStyle('contactPersonEmail')}`}
                       placeholder="contact@organization.com"
                       disabled={loading}
                     />
                   </div>
+                  {errors.contactPersonEmail && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.contactPersonEmail}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -457,12 +610,18 @@ export const NgoRegister = () => {
                       type="tel"
                       required
                       value={formData.contactPersonPhone}
-                      onChange={(e) => setFormData({ ...formData, contactPersonPhone: e.target.value })}
-                      className="pl-10"
+                      onChange={(e) => handleFieldChange('contactPersonPhone', e.target.value)}
+                      className={`pl-10 ${getErrorStyle('contactPersonPhone')}`}
                       placeholder="+1 (555) 123-4567"
                       disabled={loading}
                     />
                   </div>
+                  {errors.contactPersonPhone && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.contactPersonPhone}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -487,10 +646,17 @@ export const NgoRegister = () => {
                   type="text"
                   required
                   value={formData.street}
-                  onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                  onChange={(e) => handleFieldChange('street', e.target.value)}
                   placeholder="123 Main Street"
                   disabled={loading}
+                  className={getErrorStyle('street')}
                 />
+                {errors.street && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.street}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -501,10 +667,17 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    onChange={(e) => handleFieldChange('city', e.target.value)}
                     placeholder="City"
                     disabled={loading}
+                    className={getErrorStyle('city')}
                   />
+                  {errors.city && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.city}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -514,10 +687,17 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    onChange={(e) => handleFieldChange('state', e.target.value)}
                     placeholder="State"
                     disabled={loading}
+                    className={getErrorStyle('state')}
                   />
+                  {errors.state && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.state}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -527,10 +707,17 @@ export const NgoRegister = () => {
                     type="text"
                     required
                     value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                    onChange={(e) => handleFieldChange('zipCode', e.target.value)}
                     placeholder="12345"
                     disabled={loading}
+                    className={getErrorStyle('zipCode')}
                   />
+                  {errors.zipCode && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.zipCode}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

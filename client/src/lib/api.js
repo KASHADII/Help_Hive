@@ -22,6 +22,7 @@ const handleResponse = async (response) => {
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
+  console.log('getAuthHeaders - Token:', token ? token.substring(0, 20) + '...' : 'No token')
   return {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` })
