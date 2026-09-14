@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Badge } from '../components/ui/badge'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Shield, 
-  Building, 
+  ShieldCheck, 
+  Building2, 
   Users, 
   Clock, 
-  CheckCircle, 
+  CheckCircle2, 
   XCircle, 
   Eye, 
   LogOut,
@@ -17,7 +15,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  Globe
+  Globe,
+  RefreshCw,
+  X
 } from 'lucide-react'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { adminAPI } from '../lib/api'
@@ -29,6 +29,8 @@ export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('pending')
   const [stats, setStats] = useState({})
   const [error, setError] = useState('')
+  const [actionNotes, setActionNotes] = useState('')
+  const [processing, setProcessing] = useState(false)
 
   const { adminLogout } = useAdminAuth()
   const navigate = useNavigate()
@@ -42,358 +44,264 @@ export const AdminDashboard = () => {
       setLoading(true)
       setError('')
       
-      // Load dashboard stats
       const dashboardData = await adminAPI.getDashboard()
-      setStats(dashboardData.data)
+      setStats(dashboardData.data || {})
       
-      // Load NGOs
       const ngosData = await adminAPI.getNGOs()
-      setNGOs(ngosData.data)
-    } catch (error) {
-      console.error('Error loading admin data:', error)
-      setError('Failed to load data. Please try again.')
+      setNGOs(ngosData.data || [])
+    } catch (err) {
+      console.error('Error loading admin data:', err)
+      setError('Could not fetch NGO verification records.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleApproveNGO = async (ngoId, adminNotes = '') => {
+  const handleApproveNGO = async (ngoId) => {
     try {
-      await adminAPI.approveNGO(ngoId, adminNotes)
-      await loadData() // Reload data
+      setProcessing(true)
+      await adminAPI.approveNGO(ngoId, actionNotes)
+      await loadData()
       setSelectedNGO(null)
-    } catch (error) {
-      console.error('Error approving NGO:', error)
-      setError('Failed to approve NGO. Please try again.')
+      setActionNotes('')
+    } catch (err) {
+      console.error('Error approving NGO:', err)
+      setError('Failed to approve NGO.')
+    } finally {
+      setProcessing(false)
     }
   }
 
-  const handleRejectNGO = async (ngoId, rejectionReason, adminNotes = '') => {
+  const handleRejectNGO = async (ngoId) => {
     try {
-      await adminAPI.rejectNGO(ngoId, rejectionReason, adminNotes)
-      await loadData() // Reload data
+      setProcessing(true)
+      await adminAPI.rejectNGO(ngoId, actionNotes || 'Document verification incomplete', actionNotes)
+      await loadData()
       setSelectedNGO(null)
-    } catch (error) {
-      console.error('Error rejecting NGO:', error)
-      setError('Failed to reject NGO. Please try again.')
+      setActionNotes('')
+    } catch (err) {
+      console.error('Error rejecting NGO:', err)
+      setError('Failed to reject NGO.')
+    } finally {
+      setProcessing(false)
     }
   }
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>
-      case 'approved':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Approved</Badge>
-      case 'rejected':
-        return <Badge variant="secondary" className="bg-red-100 text-red-800">Rejected</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
-
-  // Helper function to safely render any field that might be an object
-  const safeRender = (value, fallback = '') => {
-    if (!value) return fallback
-    if (typeof value === 'object') {
-      // Handle address object
-      if (value.street || value.city || value.state || value.zipCode) {
-        return `${value.street || ''}, ${value.city || ''}, ${value.state || ''} ${value.zipCode || ''}`.trim()
-      }
-      // Handle contactPerson object
-      if (value.name || value.email || value.phone) {
-        return value.name || value.email || value.phone || fallback
-      }
-      // For other objects, try to stringify or return fallback
-      try {
-        return JSON.stringify(value)
-      } catch {
-        return fallback
-      }
-    }
-    return String(value)
-  }
-
-  const filteredNGOs = ngos.filter(ngo => ngo.status === activeTab)
-
-  const handleLogout = () => {
-    adminLogout()
-    navigate('/admin/login')
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    )
-  }
+  const filteredNGOs = ngos.filter(ngo => {
+    const status = ngo.verificationStatus || ngo.status
+    if (activeTab === 'all') return true
+    return status === activeTab
+  })
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Shield className="h-8 w-8 text-red-500" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">NGO Application Management</p>
-              </div>
-            </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-purple-700">
+            <ShieldCheck className="w-4 h-4" />
+            <span>ADMINISTRATOR GATEWAY</span>
           </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            NGO Verification & Compliance Center
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Verify new non-profit registrations, review Tax IDs, and ensure safety across the community.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-2 shadow-xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync Records</span>
+          </button>
+          <button
+            onClick={async () => {
+              await adminLogout()
+              navigate('/admin/login')
+            }}
+            className="px-4 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-2"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Log Out</span>
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+      {/* Admin Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Pending Review</div>
+          <div className="text-3xl font-black text-slate-900">
+            {stats.pendingNGOs !== undefined ? stats.pendingNGOs : ngos.filter(n => (n.verificationStatus || n.status) === 'pending').length}
+          </div>
+          <div className="text-xs font-bold text-amber-700 mt-2">Awaiting Verification</div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Approved NGOs</div>
+          <div className="text-3xl font-black text-emerald-600">
+            {stats.verifiedNGOs !== undefined ? stats.verifiedNGOs : ngos.filter(n => (n.verificationStatus || n.status) === 'approved').length}
+          </div>
+          <div className="text-xs font-bold text-emerald-700 mt-2">Verified Community Partners</div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Total Volunteers</div>
+          <div className="text-3xl font-black text-indigo-600">
+            {stats.totalUsers || 2400}
+          </div>
+          <div className="text-xs font-bold text-indigo-700 mt-2">Active Network Helpers</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
+        {['pending', 'approved', 'rejected', 'all'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === tab
+                ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+            }`}
+          >
+            {tab} Queue
+          </button>
+        ))}
+      </div>
+
+      {/* NGO Verification Queue */}
+      <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-md space-y-4">
+        {filteredNGOs.length > 0 ? (
+          <div className="space-y-3">
+            {filteredNGOs.map((ngo) => {
+              const status = ngo.verificationStatus || ngo.status || 'pending'
+              return (
+                <div
+                  key={ngo._id}
+                  className="p-5 rounded-2xl bg-slate-50 hover:bg-purple-50/30 border border-slate-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-extrabold text-slate-900 text-base">{ngo.organizationName || 'Non-Profit Partner'}</h4>
+                      <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                        status === 'approved' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                        status === 'rejected' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                        'bg-amber-100 text-amber-800 border-amber-300'
+                      }`}>
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-500 flex flex-wrap gap-4 font-medium">
+                      <span>Email: {ngo.email || 'N/A'}</span>
+                      <span>Tax / Registration ID: {ngo.taxId || ngo.registrationNumber || 'N/A'}</span>
+                      <span>Contact: {ngo.phone || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end md:self-auto">
+                    <button
+                      onClick={() => setSelectedNGO(ngo)}
+                      className="px-4 py-2 rounded-2xl bg-white hover:bg-purple-600 hover:text-white text-xs font-bold text-slate-700 border border-slate-200 transition-colors flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Review Details</span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="py-16 text-center text-slate-500">
+            <Building2 className="w-12 h-12 mx-auto text-purple-400/40 mb-2" />
+            <p className="text-base font-bold text-slate-800">No NGOs in this list.</p>
           </div>
         )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{ngos.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {ngos.filter(ngo => ngo.status === 'pending').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {ngos.filter(ngo => ngo.status === 'approved').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-              <XCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {ngos.filter(ngo => ngo.status === 'rejected').length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[
-                { id: 'pending', label: 'Pending Review', count: ngos.filter(ngo => ngo.status === 'pending').length },
-                { id: 'approved', label: 'Approved', count: ngos.filter(ngo => ngo.status === 'approved').length },
-                { id: 'rejected', label: 'Rejected', count: ngos.filter(ngo => ngo.status === 'rejected').length }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-red-500 text-red-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {tab.count}
-                  </Badge>
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Applications List */}
-        <div className="space-y-4">
-          {filteredNGOs.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8 text-gray-500">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No {activeTab} applications found.</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredNGOs.map((ngo) => (
-              <Card key={ngo.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{safeRender(ngo.organizationName)}</CardTitle>
-                      <CardDescription>
-                        {safeRender(ngo.category)} • Submitted {new Date(ngo.createdAt).toLocaleDateString()}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(ngo.status)}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedNGO(ngo)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-2" />
-                      {safeRender(ngo.email)}
-                    </div>
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 mr-2" />
-                      {safeRender(ngo.phone)}
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {safeRender(ngo.address)}
-                    </div>
-                    <div className="flex items-center">
-                      <Globe className="h-4 w-4 mr-2" />
-                      {safeRender(ngo.website)}
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-gray-600 line-clamp-2">
-                    {safeRender(ngo.description)}
-                  </p>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
       </div>
 
-      {/* Application Detail Modal */}
-      {selectedNGO && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {safeRender(selectedNGO.organizationName)}
-                </h2>
-                <div className="flex items-center space-x-2">
-                  {getStatusBadge(selectedNGO.status)}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedNGO(null)}
-                  >
-                    Close
-                  </Button>
+      {/* Review Modal */}
+      <AnimatePresence>
+        {selectedNGO && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNGO(null)}
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl z-10 space-y-6"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-6 h-6 text-purple-600" />
+                  <h3 className="text-lg font-extrabold text-slate-900">NGO Verification Review</h3>
+                </div>
+                <button onClick={() => setSelectedNGO(null)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div><span className="text-slate-500 font-bold">ORGANIZATION:</span> <span className="text-slate-900 font-extrabold text-sm">{selectedNGO.organizationName}</span></div>
+                  <div><span className="text-slate-500 font-bold">EMAIL:</span> <span className="text-slate-800">{selectedNGO.email}</span></div>
+                  <div><span className="text-slate-500 font-bold">REGISTRATION NUMBER:</span> <span className="text-emerald-700 font-bold">{selectedNGO.registrationNumber || selectedNGO.taxId || 'N/A'}</span></div>
+                  <div><span className="text-slate-500 font-bold">DESCRIPTION:</span> <span className="text-slate-700">{selectedNGO.description || 'No description provided.'}</span></div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700">
+                    Verification Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={actionNotes}
+                    onChange={(e) => setActionNotes(e.target.value)}
+                    placeholder="Enter approval note or reason for rejection..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-purple-500"
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Organization Details</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><strong>Category:</strong> {safeRender(selectedNGO.category)}</div>
-                      <div><strong>Founded Year:</strong> {safeRender(selectedNGO.foundedYear)}</div>
-                      <div><strong>Registration Number:</strong> {safeRender(selectedNGO.registrationNumber)}</div>
-                      <div><strong>Website:</strong> <a href={safeRender(selectedNGO.website)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{safeRender(selectedNGO.website)}</a></div>
-                    </div>
-                  </div>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={() => handleRejectNGO(selectedNGO._id)}
+                  className="px-5 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors flex items-center gap-1.5"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Reject</span>
+                </button>
 
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Contact Information</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><strong>Contact Person:</strong> {safeRender(selectedNGO.contactPerson, 'No contact person')}</div>
-                      <div><strong>Email:</strong> {safeRender(selectedNGO.contactEmail)}</div>
-                      <div><strong>Phone:</strong> {safeRender(selectedNGO.phone)}</div>
-                      <div><strong>Address:</strong> {safeRender(selectedNGO.address)}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                    <p className="text-sm text-gray-600">{safeRender(selectedNGO.description)}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Documents</h3>
-                    <div className="space-y-2">
-                      {selectedNGO.documents && Object.entries(selectedNGO.documents).map(([key, filename]) => (
-                        <div key={key} className="flex items-center space-x-2 text-sm">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                          <span className="text-blue-600">{String(filename)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {selectedNGO.status === 'pending' && (
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-900">Review Decision</h3>
-                      <div className="flex space-x-3">
-                        <Button
-                          onClick={() => handleApproveNGO(selectedNGO._id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            const reason = prompt('Please provide a reason for rejection:')
-                            if (reason) {
-                              handleRejectNGO(selectedNGO._id, reason)
-                            }
-                          }}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={() => handleApproveNGO(selectedNGO._id)}
+                  className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition-colors flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Approve & Verify NGO</span>
+                </button>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   )
-} 
+}

@@ -1,14 +1,31 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Search, Filter, MapPin, Clock, Star, Users, Calendar, AlertCircle, RefreshCw } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { 
+  Search, 
+  MapPin, 
+  Clock, 
+  Flame, 
+  Users, 
+  Calendar, 
+  RefreshCw, 
+  ArrowRight,
+  Heart,
+  TreePine,
+  Utensils,
+  BookOpen,
+  Dog,
+  ShieldCheck,
+  X
+} from 'lucide-react'
 import { tasksAPI } from '../lib/api'
-import { safeRender, formatLocation, formatDate } from '../lib/utils'
 
 export const TaskList = () => {
+  const [searchParams] = useSearchParams()
+  const initialCategory = searchParams.get('category') || 'all'
+  
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedLocation, setSelectedLocation] = useState('all')
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -20,35 +37,23 @@ export const TaskList = () => {
     'Environment',
     'Healthcare',
     'Technology',
-    'Arts & Culture',
+    'Disaster Relief',
     'Animal Welfare'
   ]
 
-  const locations = [
-    'all',
-    'Mumbai',
-    'Delhi',
-    'Bangalore',
-    'Chennai',
-    'Kolkata',
-    'Hyderabad',
-    'Pune',
-    'Ahmedabad',
-    'Remote'
-  ]
+  const categoryImages = {
+    'Environment': 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=80',
+    'Community Service': 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=600&q=80',
+    'Education': 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
+    'Animal Welfare': 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=600&q=80',
+    'Healthcare': 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80',
+    'Disaster Relief': 'https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?auto=format&fit=crop&w=600&q=80',
+    'Technology': 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80',
+    'default': 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=600&q=80'
+  }
 
   useEffect(() => {
     fetchTasks()
-  }, [])
-
-  // Refresh tasks when component comes into focus (e.g., after posting a task)
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchTasks()
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   const fetchTasks = async () => {
@@ -56,11 +61,10 @@ export const TaskList = () => {
       setLoading(true)
       setError('')
       const response = await tasksAPI.getAll()
-      console.log('Tasks received:', response.data)
       setTasks(response.data || [])
-    } catch (error) {
-      console.error('Error fetching tasks:', error)
-      setError('Failed to load tasks. Please try again.')
+    } catch (err) {
+      console.error('Error fetching tasks:', err)
+      setError('Failed to load volunteer causes.')
       setTasks([])
     } finally {
       setLoading(false)
@@ -69,241 +73,179 @@ export const TaskList = () => {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.ngo?.organizationName?.toLowerCase().includes(searchTerm.toLowerCase())
+                          task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          task.location?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory
-    const matchesLocation = selectedCategory === 'all' || 
-                           task.location?.city?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-                           task.location?.state?.toLowerCase().includes(selectedLocation.toLowerCase())
     
-    return matchesSearch && matchesCategory && matchesLocation
+    return matchesSearch && matchesCategory
   })
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="text-center">
-        <div className="flex justify-between items-center mb-4">
-          <div></div>
-          <h1 className="text-4xl font-bold text-gray-900">
-            Browse Available Tasks
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="space-y-1">
+          <span className="text-xs font-bold uppercase text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
+            Explore Opportunities
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">
+            Volunteer Opportunities in Your Area
           </h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchTasks}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Join hands with verified NGOs, contribute your skills, and earn certified karma hours.
+          </p>
         </div>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Find meaningful opportunities to contribute to your community and gain valuable experience.
-        </p>
+
+        <button 
+          onClick={fetchTasks}
+          disabled={loading}
+          className="self-start md:self-auto px-4 py-2 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm text-xs font-bold transition-all flex items-center gap-2"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh List</span>
+        </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="grid md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
-          </div>
+      {/* Filter & Search Bar */}
+      <div className="space-y-4">
+        {/* Search */}
+        <div className="relative max-w-2xl">
+          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search by cause name, skill (e.g., teaching, tree planting), or city..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-10 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 shadow-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          >
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category === 'all' ? 'All Categories' : category}
-              </option>
-            ))}
-          </select>
+        {/* Category Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all capitalize shadow-xs ${
+                  isSelected
+                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                    : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+                }`}
+              >
+                {cat === 'all' ? 'All Causes' : cat}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-          {/* Location Filter */}
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          >
-            {locations.map(location => (
-              <option key={location} value={location}>
-                {location === 'all' ? 'All Locations' : location}
-              </option>
-            ))}
-          </select>
+      {/* Opportunities Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <div key={n} className="h-80 rounded-3xl bg-white border border-slate-200 animate-pulse shadow-sm" />
+          ))}
+        </div>
+      ) : filteredTasks.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTasks.map((task) => {
+            const imageUrl = categoryImages[task.category] || categoryImages['default']
+            return (
+              <motion.div
+                key={task._id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="h-44 overflow-hidden relative">
+                    <img
+                      src={imageUrl}
+                      alt={task.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                      <span className="font-bold text-[11px] px-3 py-1 rounded-full bg-white/95 text-slate-800 shadow-xs">
+                        {task.category || 'Community'}
+                      </span>
+                    </div>
+                    <div className="absolute top-3 right-3">
+                      <span className="font-bold text-xs bg-amber-500 text-white px-3 py-1 rounded-full shadow-xs flex items-center gap-1">
+                        <Flame className="w-3.5 h-3.5 fill-white" /> +{task.karmaPoints || 100}
+                      </span>
+                    </div>
+                  </div>
 
-          {/* Clear Filters */}
-          <Button
-            variant="outline"
+                  <div className="p-6 space-y-3">
+                    <h3 className="font-extrabold text-slate-900 text-lg group-hover:text-amber-600 transition-colors line-clamp-2">
+                      {task.title}
+                    </h3>
+
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                      {task.description}
+                    </p>
+
+                    {task.skillsRequired && task.skillsRequired.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {task.skillsRequired.slice(0, 3).map((skill, idx) => (
+                          <span key={idx} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-6 pt-0 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium pt-3 border-t border-slate-100">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-amber-500" /> {task.location || 'Citywide'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-slate-400" /> {task.applicants?.length || 0} / {task.volunteersNeeded || 10} spots
+                    </span>
+                  </div>
+
+                  <Link
+                    to={`/tasks/${task._id}`}
+                    className="w-full py-2.5 rounded-2xl bg-amber-50 hover:bg-amber-500 text-amber-900 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>View Details & Volunteer</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="py-20 text-center rounded-3xl bg-white border border-slate-200 shadow-sm max-w-md mx-auto p-8 space-y-3">
+          <Heart className="w-12 h-12 text-amber-500 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-800">No Volunteer Causes Found</h3>
+          <p className="text-xs text-slate-500">Try clearing search filters or selecting another category.</p>
+          <button
             onClick={() => {
               setSearchTerm('')
               setSelectedCategory('all')
-              setSelectedLocation('all')
             }}
-            className="flex items-center justify-center"
+            className="px-5 py-2.5 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-md"
           >
-            <Filter className="h-4 w-4 mr-2" />
-            Clear Filters
-          </Button>
-        </div>
-      </div>
-
-      {/* Results Count */}
-      <div className="flex justify-between items-center">
-        <p className="text-gray-600">
-          Showing {filteredTasks.length} of {tasks.length} tasks
-        </p>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Sort by:</span>
-          <select className="text-sm border border-gray-300 rounded px-2 py-1">
-            <option>Most Recent</option>
-            <option>Deadline</option>
-            <option>Rating</option>
-            <option>Applicants</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading tasks...</p>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <div className="text-center py-12">
-          <div className="text-red-400 mb-4">
-            <AlertCircle className="h-16 w-16 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Error Loading Tasks
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={fetchTasks} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      {/* Tasks Grid */}
-      {!loading && !error && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTasks.map((task) => (
-            <div key={task._id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">
-                  {task.category}
-                </span>
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                  <span className="text-sm text-gray-600 ml-1">{task.rating || 'New'}</span>
-                </div>
-              </div>
-
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                {task.title}
-              </h3>
-              
-              <p className="text-gray-600 mb-4 font-medium">
-                {task.ngo?.organizationName || 'Organization'}
-              </p>
-
-              <p className="text-gray-600 mb-4 text-sm line-clamp-2">
-                {task.description}
-              </p>
-
-              <div className="space-y-2 text-sm text-gray-500 mb-4">
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {formatLocation(task.location)}
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-2" />
-                  {task.requirements?.volunteersNeeded || 1} volunteers needed
-                </div>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2" />
-                  {task.applications?.length || 0} applicants
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Start: {task.dateTime?.startDate ? new Date(task.dateTime.startDate).toLocaleDateString() : 'TBD'}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-1">
-                  {task.requirements?.skills?.slice(0, 3).map((skill, index) => (
-                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                      {skill}
-                    </span>
-                  ))}
-                  {task.requirements?.skills?.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                      +{task.requirements.skills.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <Link to={`/tasks/${task._id}`}>
-                <Button className="w-full">
-                  View Details
-                </Button>
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* No Results */}
-      {!loading && !error && filteredTasks.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
-            <Search className="h-16 w-16 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            {tasks.length === 0 ? 'No tasks available' : 'No tasks found'}
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {tasks.length === 0 
-              ? 'Be the first to post a task and make a difference in your community!'
-              : 'Try adjusting your search criteria or filters.'
-            }
-          </p>
-          {tasks.length === 0 ? (
-            <Link to="/post-task">
-              <Button>Post First Task</Button>
-            </Link>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchTerm('')
-                setSelectedCategory('all')
-                setSelectedLocation('all')
-              }}
-            >
-              Clear All Filters
-            </Button>
-          )}
+            Reset Filters
+          </button>
         </div>
       )}
     </div>
   )
-} 
+}

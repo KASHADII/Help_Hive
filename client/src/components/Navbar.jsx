@@ -1,60 +1,62 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Button } from './ui/button'
-import { Menu, X, Heart, User, Plus, Home, Search, LogOut, Building, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Heart, 
+  User, 
+  Plus, 
+  Home, 
+  Search, 
+  LogOut, 
+  Building2, 
+  Sparkles, 
+  ShieldCheck, 
+  Menu, 
+  X, 
+  Compass,
+  ArrowRight
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useAdminAuth } from '../contexts/AdminAuthContext'
 
-export const Navbar = () => {
+export const Navbar = ({ onOpenCommandPalette }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [showAuthOptions, setShowAuthOptions] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const { currentUser, logout } = useAuth()
+  const { currentUser, isNgo, logout } = useAuth()
+  const { isAdminAuthenticated } = useAdminAuth()
 
-  // Improved NGO user detection - check if user has NGO role or NGO-specific properties
-  const isNgoUser = currentUser && (
-    currentUser.role === 'ngo' || 
-    (currentUser.name && !currentUser.name.includes(' ')) ||
-    currentUser.email?.includes('ngo') ||
-    currentUser.email?.includes('organization')
-  )
-
-  // Define navigation items based on user role:
-  // - All users: Home, Browse Tasks
-  // - Authenticated users: + Dashboard
-  // - NGO users: + Post Task
-  const getNavItems = () => {
-    const baseItems = [
-      { path: '/', label: 'Home', icon: Home },
-      { path: '/tasks', label: 'Browse Tasks', icon: Search },
-    ]
-
-    // Add Dashboard for authenticated users
-    if (currentUser) {
-      baseItems.push({ path: '/dashboard', label: 'Dashboard', icon: User })
-    }
-
-    // Add Post Task only for NGO users
-    if (isNgoUser) {
-      baseItems.splice(2, 0, { path: '/post-task', label: 'Post Task', icon: Plus })
-    }
-
-    return baseItems
-  }
-
-  const navItems = getNavItems()
-
-  const isActive = (path) => location.pathname === path
-
-  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
+      setScrolled(window.scrollY > 15)
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [location.pathname])
+
+  const isNgoUser = isNgo ? isNgo() : (currentUser?.role === 'ngo')
+
+  const navItems = [
+    { path: '/', label: 'Home', icon: Home },
+    { path: '/tasks', label: 'Explore Causes', icon: Compass },
+    ...(currentUser ? [
+      { 
+        path: isNgoUser ? '/ngo-dashboard' : '/dashboard', 
+        label: isNgoUser ? 'NGO Dashboard' : 'My Volunteering', 
+        icon: User 
+      }
+    ] : []),
+    ...(isNgoUser ? [
+      { path: '/post-task', label: 'Post a Cause', icon: Plus }
+    ] : [])
+  ]
+
+  const isActive = (path) => location.pathname === path
 
   const handleLogout = async () => {
     try {
@@ -66,253 +68,202 @@ export const Navbar = () => {
   }
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled 
-        ? 'bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50' 
-        : 'bg-transparent'
-    }`}>
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
-              <Heart className="h-8 w-8 text-blue-500 relative z-10 animate-pulse-slow" />
+    <header className="fixed top-0 left-0 right-0 z-40 px-3 sm:px-6 py-3.5 transition-all duration-300">
+      <div className={`max-w-7xl mx-auto transition-all duration-300 rounded-3xl px-4 sm:px-6 py-3 flex items-center justify-between ${
+        scrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg shadow-[#14281D]/5 border border-[#14281D]/10' 
+          : 'bg-white/80 backdrop-blur-sm border border-[#14281D]/8 shadow-sm'
+      }`}>
+        
+        {/* Brand Logo */}
+        <div className="flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-[#14281D] text-white shadow-md shadow-[#14281D]/20 group-hover:scale-105 transition-transform duration-200">
+              <Heart className="w-5 h-5 fill-white text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold text-gradient">HelpHive</span>
-              <span className="text-xs text-gray-500 -mt-1">Community Impact</span>
+              <span className="font-extrabold text-lg tracking-tight text-[#14281D] flex items-center gap-1">
+                Help<span className="text-[#D95D39]">Hive</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest -mt-0.5">Small Acts. Living Impact.</span>
             </div>
           </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item, index) => {
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover-lift ${
-                    isActive(item.path)
-                      ? 'gradient-primary text-white shadow-lg'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
-                  }`}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                  {isActive(item.path) && (
-                    <Sparkles className="h-3 w-3 animate-pulse" />
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-3">
-            {currentUser ? (
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
-                    Welcome, {currentUser.name || currentUser.email}
-                  </span>
-                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                    isNgoUser 
-                      ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                      : 'bg-green-100 text-green-800 border border-green-200'
-                  }`}>
-                    {isNgoUser ? 'NGO' : 'Volunteer'}
-                  </span>
-                </div>
-                <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
-                  <Button variant="outline" size="sm" className="hover-lift">
-                    {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
-                    {isNgoUser ? 'NGO Dashboard' : 'Profile'}
-                  </Button>
-                </Link>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleLogout}
-                  className="hover-lift hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAuthOptions(!showAuthOptions)}
-                    className="hover-lift"
-                  >
-                    Sign In
-                  </Button>
-                  
-                  {showAuthOptions && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-scale-in">
-                      <div className="p-2">
-                        <Link
-                          to="/login"
-                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                          onClick={() => setShowAuthOptions(false)}
-                        >
-                          <User className="h-4 w-4 mr-3 text-blue-500" />
-                          <div>
-                            <div className="font-medium">Volunteer Login</div>
-                            <div className="text-xs text-gray-500">For students & individuals</div>
-                          </div>
-                        </Link>
-                        <Link
-                          to="/ngo-login"
-                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                          onClick={() => setShowAuthOptions(false)}
-                        >
-                          <Building className="h-4 w-4 mr-3 text-green-500" />
-                          <div>
-                            <div className="font-medium">NGO Login</div>
-                            <div className="text-xs text-gray-500">For organizations</div>
-                          </div>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Link to="/register">
-                    <Button size="sm" className="gradient-primary hover-lift">
-                      <User className="h-4 w-4 mr-2" />
-                      Volunteer
-                    </Button>
-                  </Link>
-                  <Link to="/ngo-register">
-                    <Button size="sm" variant="outline" className="hover-lift border-green-200 text-green-700 hover:bg-green-50">
-                      <Building className="h-4 w-4 mr-2" />
-                      NGO
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="hover-lift"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Desktop Nav Links */}
+        <nav className="hidden md:flex items-center gap-1 bg-[#F5F2EB] p-1.5 rounded-2xl border border-[#14281D]/8">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.path)
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+                  active
+                    ? 'text-[#14281D] shadow-sm'
+                    : 'text-slate-600 hover:text-[#14281D] hover:bg-white/60'
+                }`}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="activeArtNav"
+                    className="absolute inset-0 bg-white rounded-xl shadow-sm border border-slate-200/60"
+                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                  />
+                )}
+                <Icon className={`w-3.5 h-3.5 relative z-10 ${active ? 'text-[#D95D39]' : 'text-slate-400'}`} />
+                <span className="relative z-10">{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onOpenCommandPalette && onOpenCommandPalette()}
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#F5F2EB] hover:bg-slate-200/80 text-slate-600 text-xs font-medium border border-[#14281D]/8 transition-colors"
+          >
+            <Search className="w-3.5 h-3.5 text-slate-500" />
+            <span>Search causes...</span>
+            <kbd className="font-mono text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500">⌘K</kbd>
+          </button>
+
+          {currentUser ? (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#E8F2EC] hover:bg-[#D4E8DC] border border-[#C5DFD0] text-xs font-bold text-[#163B25] transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-[#14281D] text-white flex items-center justify-center text-[10px] font-bold">
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span className="hidden sm:inline-block max-w-[110px] truncate">{currentUser.name || currentUser.email}</span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-2 rounded-2xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/ngo-login"
+                className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-[#E8F2EC] hover:bg-[#D4E8DC] rounded-2xl border border-[#C5DFD0] transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>For NGOs</span>
+              </Link>
+              <Link
+                to="/login"
+                className="px-4 py-2 text-xs font-bold text-slate-700 hover:text-[#14281D] transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="px-4 py-2 rounded-2xl bg-[#D95D39] hover:bg-[#C84B27] text-white text-xs font-extrabold shadow-md shadow-orange-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5"
+              >
+                <span>Join Volunteer</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+
+          {isAdminAuthenticated && (
+            <Link
+              to="/admin/dashboard"
+              className="hidden xl:flex items-center gap-1 px-2.5 py-1 rounded-2xl bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Admin
+            </Link>
+          )}
+
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 rounded-2xl text-slate-600 hover:text-slate-900 bg-slate-100 border border-slate-200"
+          >
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 animate-fade-in-down">
-            <div className="flex flex-col space-y-2">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="md:hidden max-w-7xl mx-auto mt-2 bg-white border border-slate-200 rounded-3xl p-4 shadow-xl space-y-3"
+          >
+            <div className="space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover-lift ${
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-bold ${
                       isActive(item.path)
-                        ? 'gradient-primary text-white'
-                        : 'text-gray-700 hover:text-red-600 hover:bg-red-50'
+                        ? 'bg-[#E8F2EC] text-[#163B25] border border-[#C5DFD0]'
+                        : 'text-slate-700 hover:bg-slate-50'
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="w-4 h-4 text-[#D95D39]" />
                     <span>{item.label}</span>
-                    {isActive(item.path) && (
-                      <Sparkles className="h-4 w-4 animate-pulse ml-auto" />
-                    )}
                   </Link>
                 )
               })}
-              <div className="pt-4 border-t border-gray-200">
-                {currentUser ? (
-                  <div className="flex flex-col space-y-3">
-                    <div className="px-4 py-3 bg-gray-50 rounded-xl">
-                      <div className="text-sm text-gray-600 mb-2">
-                        Welcome, {currentUser.name || currentUser.email}
-                      </div>
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                        isNgoUser 
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                          : 'bg-green-100 text-green-800 border border-green-200'
-                      }`}>
-                        {isNgoUser ? 'NGO' : 'Volunteer'}
-                      </span>
-                    </div>
-                    <Link to={isNgoUser ? "/ngo-dashboard" : "/profile"}>
-                      <Button variant="outline" size="sm" className="w-full hover-lift">
-                        {isNgoUser ? <Building className="h-4 w-4 mr-2" /> : <User className="h-4 w-4 mr-2" />}
-                        {isNgoUser ? 'NGO Dashboard' : 'Profile'}
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full hover-lift hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                      onClick={() => {
-                        handleLogout()
-                        setIsMenuOpen(false)
-                      }}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col space-y-3">
-                    <div className="px-4 py-2 text-sm text-gray-600 font-medium">
-                      Sign in as:
-                    </div>
-                    <Link to="/login">
-                      <Button variant="outline" size="sm" className="w-full hover-lift">
-                        <User className="h-4 w-4 mr-2" />
-                        Volunteer
-                      </Button>
-                    </Link>
-                    <Link to="/ngo-login">
-                      <Button variant="outline" size="sm" className="w-full hover-lift">
-                        <Building className="h-4 w-4 mr-2" />
-                        NGO
-                      </Button>
-                    </Link>
-                    <div className="px-4 py-2 text-sm text-gray-600 font-medium">
-                      Or register as:
-                    </div>
-                    <Link to="/register">
-                      <Button size="sm" className="w-full gradient-primary hover-lift">
-                        <User className="h-4 w-4 mr-2" />
-                        Volunteer
-                      </Button>
-                    </Link>
-                    <Link to="/ngo-register">
-                      <Button size="sm" variant="outline" className="w-full hover-lift border-green-200 text-green-700 hover:bg-green-50">
-                        <Building className="h-4 w-4 mr-2" />
-                        NGO
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
             </div>
-          </div>
+
+            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+              {!currentUser ? (
+                <>
+                  <Link
+                    to="/login"
+                    className="w-full text-center py-2.5 rounded-2xl bg-slate-100 text-slate-800 text-sm font-bold border border-slate-200"
+                  >
+                    Volunteer Sign In
+                  </Link>
+                  <Link
+                    to="/ngo-login"
+                    className="w-full text-center py-2.5 rounded-2xl bg-[#E8F2EC] text-emerald-800 text-sm font-bold border border-[#C5DFD0]"
+                  >
+                    NGO Partner Portal
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="w-full text-center py-2.5 rounded-2xl bg-[#D95D39] text-white text-sm font-extrabold shadow-md"
+                  >
+                    Join as a Volunteer
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/profile"
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-slate-50 text-sm font-bold text-slate-800"
+                  >
+                    <span>My Profile & Badges</span>
+                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-center py-2.5 rounded-2xl bg-rose-50 text-rose-700 text-sm font-bold border border-rose-200"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>
-    </nav>
+      </AnimatePresence>
+    </header>
   )
-} 
+}

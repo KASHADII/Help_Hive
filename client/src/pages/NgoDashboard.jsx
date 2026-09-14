@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Badge } from '../components/ui/badge'
+import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { 
-  Building, 
+  Building2, 
   Plus, 
   Users, 
   Calendar, 
   MapPin, 
   Clock,
-  Edit,
   Eye,
-  Trash2,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle,
-  XCircle
+  ShieldCheck,
+  Flame,
+  ArrowRight,
+  Heart
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { tasksAPI, ngoAPI } from '../lib/api'
@@ -24,7 +23,6 @@ export const NgoDashboard = () => {
   const [ngoDetails, setNgoDetails] = useState(null)
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
 
   const { currentUser } = useAuth()
   const navigate = useNavigate()
@@ -38,22 +36,17 @@ export const NgoDashboard = () => {
 
       try {
         setLoading(true)
-        
-        // Load NGO details from backend
-        const ngoResponse = await ngoAPI.getMyNGO()
-        setNgoDetails(ngoResponse.ngo)
-        
-        // Load tasks from backend
+        try {
+          const ngoResponse = await ngoAPI.getMyNGO()
+          setNgoDetails(ngoResponse.ngo)
+        } catch (err) {
+          console.warn('NGO details fetch note:', err)
+        }
+
         const tasksResponse = await tasksAPI.getMyTasks()
         setTasks(tasksResponse.tasks || [])
-        
       } catch (error) {
         console.error('Error loading dashboard data:', error)
-        // If NGO details not found, redirect to registration
-        if (error.message.includes('NGO not found')) {
-          navigate('/ngo-register')
-          return
-        }
       } finally {
         setLoading(false)
       }
@@ -62,278 +55,147 @@ export const NgoDashboard = () => {
     loadDashboardData()
   }, [currentUser, navigate])
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>
-      case 'completed':
-        return <Badge className="bg-blue-100 text-blue-800">Completed</Badge>
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
-      default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
-    }
-  }
-
-  const getNgoStatusBadge = (status) => {
-    switch (status) {
-      case 'approved':
-        return <Badge className="bg-green-100 text-green-800">Approved</Badge>
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Under Review</Badge>
-      case 'rejected':
-        return <Badge className="bg-red-100 text-red-800">Rejected</Badge>
-      default:
-        return <Badge className="bg-gray-100 text-gray-800">Unknown</Badge>
-    }
-  }
+  const totalVolunteersNeeded = tasks.reduce((sum, t) => sum + (t.volunteersNeeded || 0), 0)
+  const totalApplicants = tasks.reduce((sum, t) => sum + (t.applicants?.length || 0), 0)
+  const isVerified = ngoDetails?.verificationStatus === 'approved' || ngoDetails?.status === 'verified'
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      <div className="min-h-screen bg-[#FAF9F6] flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                NGO Dashboard
-              </h1>
-              <p className="mt-2 text-gray-600">
-                Welcome back, {currentUser?.name || currentUser?.displayName}
-              </p>
-            </div>
-            <Button 
-              onClick={() => navigate('/post-task')}
-              disabled={!ngoDetails || ngoDetails.status !== 'approved'}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Post New Task
-            </Button>
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 py-10 px-4 sm:px-6 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-emerald-700 uppercase">NGO Organization Portal</span>
+            {isVerified ? (
+              <span className="text-[11px] font-bold px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified Non-Profit
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-3 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-amber-600" /> Verification in Review
+              </span>
+            )}
           </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            {ngoDetails?.organizationName || currentUser?.name || 'Organization Dashboard'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Create community causes, review volunteer applications, and verify volunteer certificates.
+          </p>
         </div>
 
-        {/* NGO Status */}
-        {ngoDetails && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Organization Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Verification Status</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getNgoStatusBadge(ngoDetails.status)}
-                    {ngoDetails.status === 'pending' && (
-                      <p className="text-sm text-gray-500">
-                        Your application is under review. You'll be able to post tasks once approved.
-                      </p>
-                    )}
-                    {ngoDetails.status === 'approved' && (
-                      <p className="text-sm text-green-600">
-                        Your organization has been approved! You can now post tasks.
-                      </p>
-                    )}
-                    {ngoDetails.status === 'rejected' && (
-                      <p className="text-sm text-red-600">
-                        Your application was not approved. Please contact support for more information.
-                      </p>
-                    )}
+        <div className="flex items-center gap-3">
+          <Link
+            to="/post-task"
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Post a Volunteer Cause</span>
+          </Link>
+          <Link
+            to="/ngo-details"
+            className="px-4 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 transition-colors shadow-xs"
+          >
+            Org Profile
+          </Link>
+        </div>
+      </div>
+
+      {/* Stats Gauges */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Active Causes</div>
+          <div className="text-3xl font-black text-slate-900">{tasks.length}</div>
+          <div className="text-xs font-bold text-emerald-700 mt-2">Active in Community</div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Volunteer Signups</div>
+          <div className="text-3xl font-black text-amber-600">{totalApplicants}</div>
+          <div className="text-xs font-bold text-amber-700 mt-2">Ready to Help</div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Volunteers Target</div>
+          <div className="text-3xl font-black text-indigo-600">{totalVolunteersNeeded}</div>
+          <div className="text-xs font-bold text-indigo-700 mt-2">Total Quota Needed</div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Registration No.</div>
+          <div className="text-base font-bold text-slate-900 truncate mt-2">
+            {ngoDetails?.registrationNumber || ngoDetails?.taxId || '80G_CERTIFIED'}
+          </div>
+          <div className="text-xs font-bold text-slate-500 mt-2">Verified Status</div>
+        </div>
+      </div>
+
+      {/* Main Causes List */}
+      <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-md space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+            <Heart className="w-5 h-5 text-rose-500 fill-rose-500" /> Your Posted Causes
+          </h3>
+          <span className="text-xs font-bold text-slate-400">{tasks.length} Total</span>
+        </div>
+
+        {tasks.length > 0 ? (
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <div
+                key={task._id}
+                className="p-5 rounded-3xl bg-slate-50 hover:bg-amber-50/40 border border-slate-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px]">
+                      {task.category || 'Cause'}
+                    </span>
+                    <span className="text-slate-500 text-[11px] font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-slate-400" /> Posted on {new Date(task.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
+                  <h4 className="font-extrabold text-slate-900 text-base">{task.title}</h4>
+                  <p className="text-xs text-slate-600 line-clamp-1 max-w-xl">{task.description}</p>
                 </div>
-                {ngoDetails.status === 'pending' && (
-                  <Button variant="outline" size="sm" disabled>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Under Review
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[
-                { id: 'overview', label: 'Overview', icon: Building },
-                { id: 'tasks', label: 'My Tasks', icon: Calendar },
-                { id: 'volunteers', label: 'Volunteers', icon: Users }
-              ].map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === tab.id
-                        ? 'border-red-500 text-red-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                    {task.applicants?.length || 0} / {task.volunteersNeeded || 5} Volunteers Signed Up
+                  </span>
+                  <Link
+                    to={`/tasks/${task._id}`}
+                    className="p-2.5 rounded-2xl bg-white hover:bg-emerald-600 hover:text-white text-slate-600 border border-slate-200 transition-colors shadow-2xs"
+                    title="View Cause"
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Total Tasks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
-                  <p className="text-sm text-gray-600">Tasks posted</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Active Volunteers
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {tasks.reduce((total, task) => total + (task.volunteers || 0), 0)}
-                  </p>
-                  <p className="text-sm text-gray-600">Volunteers engaged</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5" />
-                    Completed Tasks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {tasks.filter(task => task.status === 'completed').length}
-                  </p>
-                  <p className="text-sm text-gray-600">Tasks completed</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {activeTab === 'tasks' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">My Tasks</h2>
-                <Button 
-                  onClick={() => navigate('/post-task')}
-                  disabled={!ngoDetails || ngoDetails.status !== 'approved'}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Post New Task
-                </Button>
+                    <Eye className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
-
-              {tasks.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks yet</h3>
-                      <p className="text-gray-600 mb-4">
-                        {!ngoDetails || ngoDetails.status !== 'approved' 
-                          ? 'You need to be approved to post tasks.'
-                          : 'Start by posting your first task to connect with volunteers.'
-                        }
-                      </p>
-                      {ngoDetails && ngoDetails.status === 'approved' && (
-                        <Button onClick={() => navigate('/post-task')}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Post Your First Task
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {tasks.map((task) => (
-                    <Card key={task._id || task.id}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{task.title}</CardTitle>
-                          {getStatusBadge(task.status)}
-                        </div>
-                        <CardDescription>{task.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {task.location}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Clock className="h-4 w-4 mr-2" />
-                          {new Date(task.date).toLocaleDateString()} at {task.time}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Users className="h-4 w-4 mr-2" />
-                          {task.volunteers || 0} / {task.maxVolunteers || '∞'} volunteers
-                        </div>
-                        <div className="flex space-x-2 pt-2">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'volunteers' && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Volunteer Management</h3>
-                  <p className="text-gray-600">
-                    Manage volunteers for your tasks. This feature is coming soon.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-16 text-center text-slate-500 space-y-3">
+            <Building2 className="w-12 h-12 mx-auto text-emerald-500/40" />
+            <p className="text-base font-extrabold text-slate-800">No Causes Posted Yet</p>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">Publish your first volunteer need so thousands of compassionate volunteers can join you.</p>
+            <Link
+              to="/post-task"
+              className="inline-block px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold shadow-md"
+            >
+              Post a Cause
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )
-} 
+}

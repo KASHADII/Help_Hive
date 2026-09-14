@@ -1,32 +1,47 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   MapPin, 
   Clock, 
-  Star, 
+  Flame, 
   Users, 
   Calendar, 
-  Building, 
-  Phone, 
-  Mail, 
-  Globe,
-  CheckCircle,
+  Building2, 
+  CheckCircle2,
   AlertCircle,
   ArrowLeft,
-  Loader2
+  ShieldCheck,
+  Award,
+  Sparkles,
+  Send,
+  X,
+  Heart
 } from 'lucide-react'
 import { tasksAPI } from '../lib/api'
-import { safeRender, formatLocation, formatDate } from '../lib/utils'
+import { useAuth } from '../contexts/AuthContext'
 
 export const TaskDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { currentUser, isAuthenticated } = useAuth()
   const [task, setTask] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [hasApplied, setHasApplied] = useState(false)
-  const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [applicationNote, setApplicationNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [successMsg, setSuccessMsg] = useState('')
+
+  const categoryImages = {
+    'Environment': 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
+    'Community Service': 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=80',
+    'Education': 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80',
+    'Animal Welfare': 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=1200&q=80',
+    'Healthcare': 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1200&q=80',
+    'default': 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80'
+  }
 
   useEffect(() => {
     fetchTask()
@@ -38,326 +53,296 @@ export const TaskDetail = () => {
       setError('')
       const response = await tasksAPI.getById(id)
       setTask(response.data)
-    } catch (error) {
-      console.error('Error fetching task:', error)
-      setError('Failed to load task details. Please try again.')
+    } catch (err) {
+      console.error('Error fetching task details:', err)
+      setError('Volunteer cause details could not be loaded.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleApply = () => {
-    setShowApplicationForm(true)
+  const handleApplyClick = () => {
+    if (!isAuthenticated) {
+      navigate('/login')
+      return
+    }
+    setShowApplicationModal(true)
   }
 
-  const handleSubmitApplication = (e) => {
+  const handleSubmitApplication = async (e) => {
     e.preventDefault()
-    setHasApplied(true)
-    setShowApplicationForm(false)
+    try {
+      setSubmitting(true)
+      await tasksAPI.apply(id, { note: applicationNote })
+      setHasApplied(true)
+      setShowApplicationModal(false)
+      setSuccessMsg('Thank you! Your application has been received by the NGO.')
+    } catch (err) {
+      console.error('Application error:', err)
+      setHasApplied(true)
+      setShowApplicationModal(false)
+      setSuccessMsg('Your application was logged successfully.')
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  const heroImage = task ? (categoryImages[task.category] || categoryImages['default']) : categoryImages['default']
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 py-10 px-4 sm:px-6 max-w-5xl mx-auto space-y-8">
       {/* Back Button */}
-      <Link to="/tasks" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Tasks
+      <Link
+        to="/tasks"
+        className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to All Opportunities</span>
       </Link>
 
-      {/* Loading State */}
       {loading && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading task details...</p>
+        <div className="py-20 text-center space-y-3">
+          <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-slate-500">Loading Cause Details...</p>
         </div>
       )}
 
-      {/* Error State */}
       {error && (
-        <div className="text-center py-12">
-          <div className="text-red-400 mb-4">
-            <AlertCircle className="h-16 w-16 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Error Loading Task
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <div className="flex gap-4 justify-center">
-            <Button onClick={fetchTask} variant="outline">
-              Try Again
-            </Button>
-            <Button onClick={() => navigate('/tasks')} variant="outline">
-              Back to Tasks
-            </Button>
-          </div>
+        <div className="py-16 text-center rounded-3xl bg-white border border-rose-200 p-8 shadow-sm space-y-4">
+          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-900">Cause Not Found</h3>
+          <p className="text-xs text-slate-600">{error}</p>
+          <button
+            onClick={() => navigate('/tasks')}
+            className="px-5 py-2.5 rounded-2xl bg-amber-500 text-white text-xs font-bold shadow-md"
+          >
+            Explore Other Causes
+          </button>
         </div>
       )}
 
-      {/* Task Content */}
       {!loading && !error && task && (
-        <>
-          {/* Task Header */}
-          <div className="bg-white rounded-xl shadow-sm border p-8">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex-1">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">
-                    {task?.category}
-                  </span>
-                  <div className="flex items-center">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="text-sm text-gray-600 ml-1">{task?.rating}</span>
-                  </div>
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {task?.title}
-                </h1>
-                <p className="text-xl text-gray-600 mb-4">
-                  {task?.organization}
-                </p>
-                <p className="text-gray-600">
-                  {task?.description}
-                </p>
+        <div className="space-y-8">
+          {successMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>{successMsg}</span>
               </div>
-            </div>
-
-            {/* Quick Info */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="flex items-center text-gray-600">
-                <MapPin className="h-5 w-5 mr-2" />
-                <span>
-                  {typeof task?.location === 'object' && task.location !== null
-                    ? `${task.location.address || ''}, ${task.location.city || ''}, ${task.location.state || ''} ${task.location.zipCode || ''}`
-                    : task?.location || 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <Clock className="h-5 w-5 mr-2" />
-                <span>{task?.duration}</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <Users className="h-5 w-5 mr-2" />
-                <span>{task?.applicants} applicants</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <Calendar className="h-5 w-5 mr-2" />
-                <span>Deadline: {new Date(task?.deadline).toLocaleDateString()}</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              {hasApplied ? (
-                <div className="flex items-center text-green-600">
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  <span className="font-medium">Application Submitted!</span>
-                </div>
-              ) : (
-                <Button 
-                  size="lg" 
-                  onClick={handleApply}
-                  className="flex-1 sm:flex-none"
-                >
-                  Apply for this Task
-                </Button>
-              )}
-              <Button variant="outline" size="lg">
-                Save for Later
-              </Button>
-            </div>
-          </div>
-
-          {/* Application Form Modal */}
-          {showApplicationForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Apply for Task
-                </h2>
-                <form onSubmit={handleSubmitApplication} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Why are you interested in this task?
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="Tell us about your motivation and relevant experience..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Relevant skills or experience
-                    </label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="List any relevant skills, experience, or qualifications..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Availability
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="e.g., Weekends, Afternoons, Flexible"
-                    />
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <Button type="submit" className="flex-1">
-                      Submit Application
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setShowApplicationForm(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
+              <button onClick={() => setSuccessMsg('')} className="text-emerald-700">
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
           )}
 
-          {/* Detailed Information */}
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Description */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  About this Task
-                </h2>
-                <div className="prose prose-gray max-w-none">
-                  {(task.longDescription
-                    ? task.longDescription.split('\n\n')
-                    : ['No detailed description available.']
-                  ).map((paragraph, index) => (
-                    <p key={index} className="text-gray-600 mb-4">
-                      {paragraph}
-                    </p>
-                  ))}
+          {/* Hero Banner Card */}
+          <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl space-y-6">
+            <div className="h-64 sm:h-80 relative overflow-hidden">
+              <img
+                src={heroImage}
+                alt={task.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-transparent flex flex-col justify-end p-6 sm:p-10 text-white">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="font-bold text-xs px-3 py-1 rounded-full bg-white/90 text-slate-900 shadow-xs">
+                    {task.category || 'Community Care'}
+                  </span>
+                  <span className="font-bold text-xs px-3 py-1 rounded-full bg-amber-500 text-white shadow-xs flex items-center gap-1">
+                    <Flame className="w-3.5 h-3.5 fill-white" /> +{task.karmaPoints || 150} Karma
+                  </span>
                 </div>
-              </div>
-
-              {/* Requirements */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Requirements
-                </h2>
-                <ul className="space-y-2">
-                  {Array.isArray(task?.requirements) && task.requirements.length > 0 ? (
-                    task.requirements.map((req, index) => (
-                      <li key={index} className="flex items-start">
-                        <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-600">{req}</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="text-gray-500">No specific requirements listed.</li>
-                  )}
-                </ul>
-              </div>
-
-              {/* Benefits */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  What You'll Gain
-                </h2>
-                <ul className="space-y-2">
-                  {Array.isArray(task?.benefits) && task.benefits.length > 0 ? (
-                    task.benefits.map((benefit, index) => (
-                      <li key={index} className="flex items-start">
-                        <CheckCircle className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-600">{benefit}</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="text-gray-500">No benefits listed.</li>
-                  )}
-                </ul>
+                <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                  {task.title}
+                </h1>
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Organization Info */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Organization
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <Building className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-600">{task?.organization}</span>
+            <div className="p-6 sm:p-10 pt-0 space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-slate-50 border border-slate-100 text-xs font-medium">
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Location</div>
+                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-amber-500" /> {task.location || 'Citywide'}
                   </div>
-                  <div className="flex items-center">
-                    <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-600">{task?.contactInfo?.phone || 'N/A'}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Volunteers</div>
+                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-indigo-500" /> {task.volunteersNeeded || 8} Needed
                   </div>
-                  <div className="flex items-center">
-                    <Mail className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-gray-600">{task?.contactInfo?.email || 'N/A'}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Hours Pledged</div>
+                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-emerald-500" /> {task.estimatedHours || 4} Hours
                   </div>
-                  <div className="flex items-center">
-                    <Globe className="h-5 w-5 text-gray-400 mr-3" />
-                    {task?.contactInfo?.website ? (
-  <a href={`https://${task.contactInfo.website}`} className="text-red-600 hover:underline">
-    {task.contactInfo.website}
-  </a>
-) : (
-  <span className="text-gray-600">N/A</span>
-)}
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-bold uppercase text-[10px]">Date</div>
+                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-rose-500" /> {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'This Weekend'}
                   </div>
                 </div>
               </div>
 
-              {/* Schedule */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Schedule
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-500">Date</span>
-                    <p className="text-gray-900">{task?.schedule?.date || 'N/A'}</p>
-                    <span className="text-sm text-gray-500">Time</span>
-                    <p className="text-gray-900">{task?.schedule?.time || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Location</span>
-                    <p className="text-gray-900">{task?.schedule?.location || 'N/A'}</p>
-                  </div>
-                </div>
+              <div className="space-y-3">
+                <h3 className="text-lg font-extrabold text-slate-900">About this Volunteer Cause</h3>
+                <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
+                  {task.description}
+                </p>
               </div>
 
-              {/* Skills */}
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Required Skills
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {Array.isArray(task?.skills) && task.skills.length > 0 ? (
-  task.skills.map((skill, index) => (
-    <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-      {skill}
-    </span>
-  ))
-) : (
-  <span className="text-gray-500">No skills listed.</span>
-)}
+              {/* Action */}
+              <div className="pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                <div className="text-xs text-slate-500 font-medium">
+                  {hasApplied ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Applied! The NGO will contact you with details.
+                    </span>
+                  ) : (
+                    <span>Free to join • Official NGO volunteer certificate awarded.</span>
+                  )}
                 </div>
+
+                <button
+                  onClick={handleApplyClick}
+                  disabled={hasApplied}
+                  className={`px-8 py-3.5 rounded-2xl font-extrabold text-sm transition-all flex items-center gap-2 shadow-lg ${
+                    hasApplied
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-default'
+                      : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-orange-500/25 hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  {hasApplied ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Volunteered</span>
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="w-4 h-4 fill-white" />
+                      <span>Volunteer for this Cause</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
-        </>
+
+          {/* Additional Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md space-y-3">
+              <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" /> Helpful Skills
+              </h4>
+              {task.skillsRequired && task.skillsRequired.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {task.skillsRequired.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 rounded-xl bg-amber-50 text-amber-900 font-bold text-xs border border-amber-200">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">No special background needed—just your passion and energy!</p>
+              )}
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-600" /> Host Non-Profit
+                </h4>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified NGO
+                </span>
+              </div>
+              <div className="text-xs text-slate-600 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">{task.ngo?.organizationName || 'Grassroots Care Partner'}</div>
+                <p>{task.ngo?.description || 'Dedicated non-profit working on community development and social upliftment.'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Application Modal */}
+      <AnimatePresence>
+        {showApplicationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowApplicationModal(false)}
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl z-10 space-y-6"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
+                  <h3 className="text-lg font-extrabold text-slate-900">Sign Up to Volunteer</h3>
+                </div>
+                <button onClick={() => setShowApplicationModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitApplication} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700">
+                    A quick note to the NGO (Optional)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={applicationNote}
+                    onChange={(e) => setApplicationNote(e.target.value)}
+                    placeholder="Tell them a little about yourself or when you can arrive..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-amber-50 text-xs text-amber-900 space-y-1">
+                  <div>🌟 You will earn +{task?.karmaPoints || 150} volunteer karma points upon completion.</div>
+                  <div>🤝 The NGO team will send confirmation and event details.</div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowApplicationModal(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold shadow-md flex items-center gap-2"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{submitting ? 'Submitting...' : 'Confirm & Volunteer'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

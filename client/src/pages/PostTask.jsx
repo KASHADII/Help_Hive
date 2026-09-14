@@ -1,737 +1,288 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Plus, X, Loader2, AlertCircle } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { 
+  Plus, 
+  X, 
+  AlertCircle, 
+  Building2, 
+  Sparkles, 
+  ArrowLeft, 
+  CheckCircle2, 
+  MapPin, 
+  Clock, 
+  Users, 
+  Award,
+  Send,
+  Heart
+} from 'lucide-react'
 import { tasksAPI } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 
 export const PostTask = () => {
   const navigate = useNavigate()
-  const { currentUser, isAuthenticated } = useAuth()
+  const { currentUser, isAuthenticated, isNgo } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
-    category: '',
+    category: 'Community Service',
     description: '',
     location: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    startDate: '',
-    endDate: '',
-    volunteersNeeded: 1,
-    skills: [],
-    requirements: [],
-    benefits: [],
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    scheduleDate: '',
-    scheduleTime: '',
-    scheduleLocation: ''
+    volunteersNeeded: 5,
+    estimatedHours: 4,
+    karmaPoints: 150,
+    deadline: '',
+    skillsRequired: []
   })
 
-  const [newSkill, setNewSkill] = useState('')
-  const [newRequirement, setNewRequirement] = useState('')
-  const [newBenefit, setNewBenefit] = useState('')
+  const [skillInput, setSkillInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
-  // Check if user is authenticated and is an NGO
-  useEffect(() => {
-    console.log('PostTask useEffect - isAuthenticated:', isAuthenticated)
-    console.log('PostTask useEffect - currentUser:', currentUser)
-    
-    if (!isAuthenticated) {
-      setError('You must be logged in to post a task.')
-      return
+  const categories = [
+    'Community Service',
+    'Education',
+    'Environment',
+    'Healthcare',
+    'Technology',
+    'Disaster Relief',
+    'Animal Welfare'
+  ]
+
+  const handleAddSkill = (e) => {
+    e.preventDefault()
+    if (skillInput.trim() && !formData.skillsRequired.includes(skillInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        skillsRequired: [...prev.skillsRequired, skillInput.trim()]
+      }))
+      setSkillInput('')
     }
-    
-    if (currentUser && currentUser.role !== 'ngo') {
-      setError('Only NGOs can post tasks. Please log in with an NGO account.')
-      return
-    }
-    
-    // Check if token is valid by making a test API call
-    const checkTokenValidity = async () => {
-      try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          setError('No authentication token found. Please log in again.')
-          return
-        }
-        
-        // Test the token by making a simple API call
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (!response.ok) {
-          setError('Authentication token is invalid. Please log in again.')
-          localStorage.removeItem('token')
-        }
-      } catch (error) {
-        console.error('Token validation error:', error)
-        setError('Authentication check failed. Please log in again.')
+  }
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      skillsRequired: prev.skillsRequired.filter(s => s !== skillToRemove)
+    }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setLoading(true)
+      setError('')
+
+      if (!formData.title || !formData.description) {
+        setError('Please provide a title and description for your cause.')
+        return
       }
-    }
-    
-    if (isAuthenticated && currentUser) {
-      checkTokenValidity()
-    }
-  }, [isAuthenticated, currentUser])
 
-  // Show authorization error if user is not authorized
-  if (!isAuthenticated || (currentUser && currentUser.role !== 'ngo')) {
+      await tasksAPI.create(formData)
+      setSuccess(true)
+      setTimeout(() => {
+        navigate('/tasks')
+      }, 1500)
+    } catch (err) {
+      console.error('Error creating task:', err)
+      setError(err.message || 'Failed to post cause. Please check your inputs.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!isAuthenticated || (currentUser && currentUser.role !== 'ngo' && !isNgo())) {
     return (
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="text-center py-12">
-          <div className="text-red-400 mb-4">
-            <AlertCircle className="h-16 w-16 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Authorization Required
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {!isAuthenticated 
-              ? 'You must be logged in to post a task.' 
-              : 'Only NGOs can post tasks. Please log in with an NGO account.'
-            }
+      <div className="min-h-[80vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white border border-slate-200 text-center space-y-4 shadow-xl">
+          <Building2 className="w-12 h-12 text-emerald-600 mx-auto" />
+          <h2 className="text-xl font-extrabold text-slate-900">NGO Partner Account Required</h2>
+          <p className="text-xs text-slate-600">
+            Posting community causes is reserved for verified non-profit organizations.
           </p>
-          <div className="flex gap-4 justify-center">
-            {!isAuthenticated ? (
-              <>
-                <Button onClick={() => navigate('/login')} variant="outline">
-                  Login
-                </Button>
-                <Button onClick={() => navigate('/ngo-login')} variant="outline">
-                  NGO Login
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => navigate('/ngo-login')} variant="outline">
-                NGO Login
-              </Button>
-            )}
+          <div className="flex gap-3 justify-center pt-2">
+            <Link to="/ngo-login" className="px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold shadow-md">
+              NGO Sign In
+            </Link>
+            <Link to="/ngo-register" className="px-5 py-2.5 rounded-2xl bg-slate-100 text-slate-700 text-xs font-bold">
+              Register NGO
+            </Link>
           </div>
         </div>
       </div>
     )
   }
 
-  const categories = [
-    'Healthcare',
-    'Education',
-    'Environment',
-    'Community Service',
-    'Animal Welfare',
-    'Disaster Relief',
-    'Human Rights',
-    'Arts & Culture',
-    'Sports',
-    'Technology',
-    'Other'
-  ]
-
-  const locations = [
-    'Downtown',
-    'North Side',
-    'South Side',
-    'East Side',
-    'West Side',
-    'Remote',
-    'Other'
-  ]
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-
-  const addSkill = () => {
-    if (newSkill.trim() && !formData.skills.includes(newSkill.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        skills: [...prev.skills, newSkill.trim()]
-      }))
-      setNewSkill('')
-    }
-  }
-
-  const removeSkill = (skillToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }))
-  }
-
-  const addRequirement = () => {
-    if (newRequirement.trim() && !formData.requirements.includes(newRequirement.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        requirements: [...prev.requirements, newRequirement.trim()]
-      }))
-      setNewRequirement('')
-    }
-  }
-
-  const removeRequirement = (reqToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      requirements: prev.requirements.filter(req => req !== reqToRemove)
-    }))
-  }
-
-  const addBenefit = () => {
-    if (newBenefit.trim() && !formData.benefits.includes(newBenefit.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        benefits: [...prev.benefits, newBenefit.trim()]
-      }))
-      setNewBenefit('')
-    }
-  }
-
-  const removeBenefit = (benefitToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      benefits: prev.benefits.filter(benefit => benefit !== benefitToRemove)
-    }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    // Check authorization
-    if (!isAuthenticated) {
-      setError('You must be logged in to post a task.')
-      return
-    }
-    
-    if (currentUser && currentUser.role !== 'ngo') {
-      setError('Only NGOs can post tasks. Please log in with an NGO account.')
-      return
-    }
-    
-    // Debug: Check token
-    const token = localStorage.getItem('token')
-    console.log('Current user:', currentUser)
-    console.log('Is authenticated:', isAuthenticated)
-    console.log('Token exists:', !!token)
-    console.log('Token:', token ? token.substring(0, 20) + '...' : 'No token')
-    
-    setLoading(true)
-    setError('')
-    
-    try {
-      // Transform form data to match backend structure
-      const taskData = {
-        title: formData.title,
-        category: formData.category,
-        description: formData.description,
-        location: {
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode
-        },
-        dateTime: {
-          startDate: new Date(formData.startDate).toISOString(),
-          endDate: new Date(formData.endDate).toISOString()
-        },
-        requirements: {
-          volunteersNeeded: parseInt(formData.volunteersNeeded),
-          skills: formData.skills,
-          experience: 'beginner',
-          trainingProvided: false
-        },
-        benefits: formData.benefits.join('. '),
-        status: 'active'
-      }
-      
-      console.log('Sending task data:', taskData)
-      
-      const response = await tasksAPI.create(taskData)
-      alert('Task posted successfully!')
-      navigate('/tasks')
-    } catch (error) {
-      console.error('Error posting task:', error)
-      
-      // Show more detailed error information
-      if (error.errors && Array.isArray(error.errors)) {
-        const errorMessages = error.errors.map(err => `${err.path}: ${err.msg}`).join(', ')
-        setError(`Validation errors: ${errorMessages}`)
-      } else if (error.message) {
-        setError(error.message)
-      } else {
-        setError('Failed to post task. Please try again.')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Post a New Task
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 py-10 px-4 sm:px-6 max-w-4xl mx-auto space-y-8">
+      <Link
+        to="/tasks"
+        className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Return to Opportunities</span>
+      </Link>
+
+      <div className="space-y-1">
+        <span className="text-xs font-bold text-emerald-700 uppercase bg-emerald-100 px-3 py-1 rounded-full">
+          Create Volunteer Opportunity
+        </span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">
+          Post a Cause & Request Volunteers
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Share your organization's needs and connect with passionate volunteers who want to make a difference.
+        <p className="text-xs sm:text-sm text-slate-600">
+          Share your mission, schedule, and volunteer requirements with thousands of active community helpers.
         </p>
       </div>
 
-      {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Debug Info - Remove in production */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">Debug Info:</h3>
-        <p className="text-blue-700 text-sm">Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-        <p className="text-blue-700 text-sm">User Role: {currentUser?.role || 'None'}</p>
-        <p className="text-blue-700 text-sm">Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}</p>
-        <p className="text-blue-700 text-sm">User ID: {currentUser?._id || 'None'}</p>
-        <div className="mt-2">
-          <Button 
-            onClick={() => window.location.reload()} 
-            variant="outline" 
-            size="sm"
-            className="text-xs"
+      {success && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span>Your volunteer cause was published successfully! Redirecting...</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2 space-y-2">
+            <label className="text-xs font-bold text-slate-700">Cause Title *</label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g. Weekend City Park Tree Planting & Sapling Care"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-amber-500"
+            >
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-700">Description & Details *</label>
+          <textarea
+            required
+            rows={5}
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Describe what volunteers will be doing, event agenda, what to wear/bring, and why it matters..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700">Location / City</label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="e.g. Central Library, Mumbai"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700">Volunteers Needed</label>
+            <input
+              type="number"
+              min="1"
+              max="500"
+              value={formData.volunteersNeeded}
+              onChange={(e) => setFormData({ ...formData, volunteersNeeded: Number(e.target.value) })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700">Karma Points Awarded</label>
+            <input
+              type="number"
+              min="20"
+              max="1000"
+              step="10"
+              value={formData.karmaPoints}
+              onChange={(e) => setFormData({ ...formData, karmaPoints: Number(e.target.value) })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-700">Helpful Skills (Optional)</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              placeholder="e.g. First Aid, Teaching, Photography..."
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddSkill}
+              className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700"
+            >
+              Add
+            </button>
+          </div>
+
+          {formData.skillsRequired.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {formData.skillsRequired.map((skill) => (
+                <span
+                  key={skill}
+                  className="px-3 py-1 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900 flex items-center gap-1.5"
+                >
+                  <span>{skill}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSkill(skill)}
+                    className="hover:text-rose-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => navigate('/tasks')}
+            className="px-5 py-3 rounded-2xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200"
           >
-            Refresh Page
-          </Button>
-        </div>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Task Information
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Task Title */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Task Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., Help organize food drive for local shelter"
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category *
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Select a category</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                City *
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., Mumbai"
-              />
-            </div>
-
-            {/* Address */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address *
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 123 Main Street"
-              />
-            </div>
-
-            {/* State */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                State *
-              </label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., Maharashtra"
-              />
-            </div>
-
-            {/* ZIP Code */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                ZIP Code *
-              </label>
-              <input
-                type="text"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 400001"
-              />
-            </div>
-
-            {/* Start Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date *
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* End Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date *
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Volunteers Needed */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Volunteers Needed *
-              </label>
-              <input
-                type="number"
-                name="volunteersNeeded"
-                value={formData.volunteersNeeded}
-                onChange={handleInputChange}
-                min="1"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 5"
-              />
-            </div>
-
-            {/* Short Description */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description *
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-                rows={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Detailed description including responsibilities, requirements, and what volunteers will gain"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Skills Section */}
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Required Skills
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Add a required skill"
-              />
-              <Button type="button" onClick={addSkill} className="px-4">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {formData.skills.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {formData.skills.map((skill, index) => (
-                  <span key={index} className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full">
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="hover:text-red-900"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Requirements Section */}
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Requirements
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newRequirement}
-                onChange={(e) => setNewRequirement(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addRequirement())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Add a requirement"
-              />
-              <Button type="button" onClick={addRequirement} className="px-4">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {formData.requirements.length > 0 && (
-              <div className="space-y-2">
-                {formData.requirements.map((req, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <span className="flex-1">{req}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeRequirement(req)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Benefits Section */}
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            What Volunteers Will Gain
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newBenefit}
-                onChange={(e) => setNewBenefit(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addBenefit())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Add a benefit"
-              />
-              <Button type="button" onClick={addBenefit} className="px-4">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {formData.benefits.length > 0 && (
-              <div className="space-y-2">
-                {formData.benefits.map((benefit, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                    <span className="flex-1">{benefit}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeBenefit(benefit)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Contact Information */}
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Contact Information
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Organization Name *
-              </label>
-              <input
-                type="text"
-                name="organization"
-                value={formData.organization}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Your organization name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contact Person *
-              </label>
-              <input
-                type="text"
-                name="contactName"
-                value={formData.contactName}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Contact person name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                name="contactEmail"
-                value={formData.contactEmail}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="contact@organization.org"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                name="contactPhone"
-                value={formData.contactPhone}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="(555) 123-4567"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Schedule Information */}
-        <div className="bg-white rounded-xl shadow-sm border p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Schedule Details
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                name="scheduleDate"
-                value={formData.scheduleDate}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time
-              </label>
-              <input
-                type="text"
-                name="scheduleTime"
-                value={formData.scheduleTime}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 9:00 AM - 12:00 PM"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Specific Location
-              </label>
-              <input
-                type="text"
-                name="scheduleLocation"
-                value={formData.scheduleLocation}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="e.g., 123 Main Street, Downtown"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-center">
-          <Button type="submit" size="lg" className="px-8 py-3 text-lg" disabled={loading}>
-            {loading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : 'Post Task'}
-          </Button>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/25 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
+          >
+            <Send className="w-4 h-4" />
+            <span>{loading ? 'Publishing...' : 'Publish Volunteer Cause'}</span>
+          </button>
         </div>
       </form>
     </div>
   )
-} 
+}

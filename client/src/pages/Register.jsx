@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Mail, Lock, Eye, EyeOff, User, Sparkles, ArrowRight, AlertCircle, Heart } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export const Register = () => {
@@ -13,7 +13,6 @@ export const Register = () => {
     confirmPassword: ''
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,21 +32,12 @@ export const Register = () => {
       return
     }
 
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      setError('First name and last name are required.')
-      return
-    }
-
-    if (!formData.email.trim()) {
-      setError('Email is required.')
-      return
-    }
-    
     try {
       setError('')
       setLoading(true)
       
       const userData = {
+        name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
@@ -56,201 +46,136 @@ export const Register = () => {
       
       await signup(userData)
       navigate('/dashboard')
-    } catch (error) {
-      console.error('Registration error:', error)
-      
-      // Handle different types of errors
-      if (error.message) {
-        setError(error.message)
-      } else if (error.errors && Array.isArray(error.errors)) {
-        // Handle validation errors from backend
-        const errorMessages = error.errors.map(err => err.msg).join(', ')
-        setError(errorMessages)
-      } else {
-        setError('Failed to create account. Please try again.')
-      }
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Create your account
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 flex items-center justify-center py-12 px-4 sm:px-6">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="max-w-md w-full space-y-6"
+      >
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/20 mb-2">
+            <Sparkles className="w-7 h-7" />
+          </div>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Join the HelpHive Family
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Join HelpHive as a volunteer to start making a difference
+          <p className="text-xs sm:text-sm text-slate-600">
+            Sign up in 30 seconds and start giving back to causes in your city.
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="First name"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="Last name"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email address *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter your email"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password *
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Create a password"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    disabled={loading}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Password must be at least 6 characters long</p>
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password *
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Confirm your password"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    disabled={loading}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Terms */}
-              <div className="flex items-center">
-                <input
-                  id="terms"
-                  name="terms"
-                  type="checkbox"
-                  required
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                  disabled={loading}
-                />
-                <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                  I agree to the{' '}
-                  <a href="#" className="font-medium text-red-600 hover:text-red-500">
-                    Terms of Service
-                  </a>{' '}
-                  and{' '}
-                  <a href="#" className="font-medium text-red-600 hover:text-red-500">
-                    Privacy Policy
-                  </a>
-                </label>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </Button>
+        <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-6">
+          {error && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{error}</span>
             </div>
-          </div>
+          )}
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-red-600 hover:text-red-500">
-                Sign in
-              </Link>
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              Are you an NGO?{' '}
-              <Link to="/ngo-register" className="font-medium text-red-600 hover:text-red-500">
-                Register as NGO
-              </Link>
-            </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">First Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Jane"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">Last Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  placeholder="jane.doe@university.edu"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Confirm Password</label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-extrabold shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <span>{loading ? 'Creating Profile...' : 'Sign Up as Volunteer'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-600 font-medium">
+            Already registered?{' '}
+            <Link to="/login" className="text-amber-600 hover:text-amber-700 font-bold">
+              Sign In
+            </Link>
           </div>
-        </form>
-      </div>
+        </div>
+      </motion.div>
     </div>
   )
-} 
+}

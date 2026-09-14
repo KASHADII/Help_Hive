@@ -1,10 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Mail, Lock, Eye, EyeOff, Building } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Mail, Lock, Eye, EyeOff, Building2, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export const NgoLogin = () => {
@@ -25,157 +22,114 @@ export const NgoLogin = () => {
     try {
       setError('')
       setLoading(true)
-      
-      console.log('NgoLogin: Starting login process for:', formData.email)
       const user = await login(formData.email, formData.password)
-      console.log('NgoLogin: Login successful, user:', user)
       
-      // Check if the user is an NGO
       if (user.role !== 'ngo') {
-        console.log('NgoLogin: User is not an NGO, role:', user.role)
-        setError('This account is not registered as an NGO. Please use the volunteer login.')
+        setError('This account is registered as a volunteer. Please use the volunteer login.')
         return
       }
       
-      console.log('NgoLogin: User is NGO, redirecting to dashboard')
-      // Redirect to NGO dashboard
       navigate('/ngo-dashboard')
-    } catch (error) {
-      console.error('NgoLogin: Login error:', error)
-      
-      // Handle different types of errors
-      if (error.message) {
-        // Check for specific approval status errors
-        if (error.message.includes('pending admin approval')) {
-          setError('Your NGO account is pending admin approval. You will be notified once approved. Please check back later.')
-        } else if (error.message.includes('rejected')) {
-          setError(error.message)
-        } else {
-          setError(error.message)
-        }
-      } else {
-        setError('Failed to log in. Please check your credentials and try again.')
-      }
+    } catch (err) {
+      console.error('NgoLogin error:', err)
+      setError(err.message || 'Failed to sign in. Please verify your NGO email and password.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
-            NGO Login
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 flex items-center justify-center py-12 px-4 sm:px-6">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="max-w-md w-full space-y-6"
+      >
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-emerald-100 text-emerald-700 shadow-md shadow-emerald-600/10 mb-2">
+            <Building2 className="w-7 h-7" />
+          </div>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            NGO Partner Portal
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your organization account
+          <p className="text-xs sm:text-sm text-slate-600">
+            Sign in to post volunteer causes, manage event signups, and sign off certificates.
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Organization Access
-            </CardTitle>
-            <CardDescription>
-              Enter your credentials to access your NGO dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pl-10"
-                    placeholder="Enter your organization email"
-                    disabled={loading}
-                  />
-                </div>
+        <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-6">
+          {error && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Organization Email</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  placeholder="contact@ngo.org"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500"
+                />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="pl-10 pr-10"
-                    placeholder="Enter your password"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    disabled={loading}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+            </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                    disabled={loading}
-                  />
-                  <Label htmlFor="remember-me" className="text-sm">
-                    Remember me
-                  </Label>
-                </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <span>{loading ? 'Authenticating...' : 'Sign In as NGO Partner'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
 
-                <div className="text-sm">
-                  <a href="#" className="font-medium text-red-600 hover:text-red-500">
-                    Forgot password?
-                  </a>
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in to Organization'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            Don't have an NGO account?{' '}
-            <Link to="/ngo-register" className="font-medium text-red-600 hover:text-red-500">
-              Register your organization
-            </Link>
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            Are you a volunteer?{' '}
-            <Link to="/login" className="font-medium text-red-600 hover:text-red-500">
-              Sign in as volunteer
-            </Link>
-          </p>
+          <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-600 font-medium space-y-2">
+            <div>
+              New non-profit organization?{' '}
+              <Link to="/ngo-register" className="text-emerald-700 hover:text-emerald-800 font-bold">
+                Register for NGO Verification
+              </Link>
+            </div>
+            <div>
+              Looking for volunteer sign in?{' '}
+              <Link to="/login" className="text-amber-600 hover:text-amber-700 font-bold">
+                Volunteer Sign In →
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
-} 
+}
